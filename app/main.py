@@ -1,6 +1,8 @@
 """FastAPI application entry point."""
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 
 from app.app_config import APP_SETTINGS
 from app.life_cycle import life_cycle
@@ -12,6 +14,19 @@ app = FastAPI(
     openapi_url="/openapi.json" if APP_SETTINGS.in_development else None,
     docs_url="/docs" if APP_SETTINGS.in_development else None,
     redoc_url="/redoc" if APP_SETTINGS.in_development else None,
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[f"http://{APP_SETTINGS.host}:{APP_SETTINGS.port}"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.add_middleware(
+    TrustedHostMiddleware,
+    allowed_hosts=[str(APP_SETTINGS.host), f"{APP_SETTINGS.host}:{APP_SETTINGS.port}"],
 )
 
 
