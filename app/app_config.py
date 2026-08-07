@@ -26,7 +26,7 @@ class AppSettings(BaseSettings):
     environment: Annotated[Literal["development", "production"], Field(default="development"),]
     """The current environment of the application."""
 
-    host: Annotated[Literal["127.0.0.1", "0.0.0.0", "localhost"] | AnyUrl, Field(default="127.0.0.1"),]
+    host: Annotated[Literal["127.0.0.1", "localhost"] | AnyUrl, Field(default="127.0.0.1"),]
     """The host address on which the FastAPI application will run."""
 
     port: Annotated[int, Field(default=8000, ge=1, le=65535),]

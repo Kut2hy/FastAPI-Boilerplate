@@ -1,9 +1,10 @@
 """Piccolo configuration file."""
 
-from app.piccolo.pg_config import POSTGRES_CON_SETTINGS
 from piccolo.conf.apps import AppRegistry
 from piccolo.engine.postgres import PostgresEngine
 from pydantic import SecretStr
+
+from app.piccolo.pg_config import POSTGRES_CON_SETTINGS
 
 DB = PostgresEngine(
     config={
