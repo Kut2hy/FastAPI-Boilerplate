@@ -1,7 +1,0 @@
-{
-    "fastapi.telemetry.enabled": false,
-    "cSpell.words": [
-        "levelprefix",
-        "Timestamptz"
-    ]
-}
