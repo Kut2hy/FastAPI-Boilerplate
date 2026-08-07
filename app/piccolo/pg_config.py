@@ -72,8 +72,8 @@ class PGPoolSettings(BaseSettings):
     @computed_field
     @property
     def max_size(self) -> int:
-        """Upper bound of pooled connections."""
-        return max(self.max_connections // APP_SETTINGS.num_workers, 1)
+        """Upper bound of pooled connections. Reduced by 5 to leave room for other connections (e.g. health checks)."""
+        return max(int((self.max_connections - 5) * 0.9) // APP_SETTINGS.num_workers, 1)
 
 
 POSTGRES_CON_SETTINGS: PGConnectionSettings = PGConnectionSettings.model_validate({})
