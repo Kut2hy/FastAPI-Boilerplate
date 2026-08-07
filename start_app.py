@@ -23,12 +23,12 @@ PUBLIC = (
 
 def __set_permissions(directory: Path, dir_mode: int, file_mode: int) -> None:
     """Recursively set permissions for a directory and its contents.
-    
+
     Args:
         directory (Path): The directory for which to set permissions.
         dir_mode (int): The permission mode to set for directories.
         file_mode (int): The permission mode to set for files.
-    
+
     """
     if not directory.exists():
         return
@@ -43,8 +43,8 @@ def __set_permissions(directory: Path, dir_mode: int, file_mode: int) -> None:
 
 def lazy_configuration_loading() -> tuple:
     """Lazy-load the logging configuration."""
-    from app.app_config import APP_SETTINGS
-    from app.core.logging.configuration import LOG_CONFIG
+    from app.app_config import APP_SETTINGS  # noqa: PLC0415
+    from app.core.logging.configuration import LOG_CONFIG  # noqa: PLC0415
 
     return APP_SETTINGS, LOG_CONFIG
 

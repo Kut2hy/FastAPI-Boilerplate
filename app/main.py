@@ -9,6 +9,9 @@ app = FastAPI(
     title=APP_SETTINGS.title,
     version=APP_SETTINGS.version,
     lifespan=life_cycle,
+    openapi_url="/openapi.json" if APP_SETTINGS.in_development else None,
+    docs_url="/docs" if APP_SETTINGS.in_development else None,
+    redoc_url="/redoc" if APP_SETTINGS.in_development else None,
 )
 
 
@@ -19,8 +22,8 @@ async def health_check():
 
 @app.get("/health-check/pg")
 async def health_check_pg():
-    from piccolo.engine import engine_finder
-    from piccolo.engine.postgres import PostgresEngine
+    from piccolo.engine import engine_finder  # noqa: PLC0415
+    from piccolo.engine.postgres import PostgresEngine  # noqa: PLC0415, TC002
 
     engine: PostgresEngine = engine_finder()  # type: ignore -> Only PG engine is used in this project
 
