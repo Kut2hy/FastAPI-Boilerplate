@@ -10,6 +10,13 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class LoggingSettings(BaseSettings):
     """Pydantic environment settings for logging configuration."""
 
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="LOGGING_",
+        env_file_encoding="utf-8",
+        dotenv_filtering="match_prefix",
+    )
+
     level: Literal["debug", "info", "warning", "error", "critical"]
     """The log level for the application."""
 
@@ -27,13 +34,6 @@ class LoggingSettings(BaseSettings):
 
     backup_count: int = 7
     """The number of backup log files to keep."""
-
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_prefix="LOGGING_",
-        env_file_encoding="utf-8",
-        dotenv_filtering="match_prefix",
-    )
 
     @computed_field
     @property

@@ -17,22 +17,22 @@ class AppSettings(BaseSettings):
         dotenv_filtering="match_prefix",
     )
 
-    title: Annotated[str, Field(default="FastAPI Application", max_length=100),]
+    title: Annotated[str, Field(default="FastAPI Application", max_length=100)]
     """The name of the FastAPI application."""
 
-    version: Annotated[str, Field(default="0.1.0", pattern=r"^\d{1,2}\.\d{1,2}\.\d{1,2}$"),]
+    version: Annotated[str, Field(default="0.1.0", pattern=r"^\d{1,2}\.\d{1,2}\.\d{1,2}$")]
     """The version of the FastAPI application."""
 
-    environment: Annotated[Literal["development", "production"], Field(default="development"),]
+    environment: Annotated[Literal["development", "production"], Field(default="development")]
     """The current environment of the application."""
 
-    host: Annotated[Literal["127.0.0.1", "localhost"] | AnyUrl, Field(default="127.0.0.1"),]
+    host: Annotated[Literal["127.0.0.1", "localhost"] | AnyUrl, Field(default="127.0.0.1")]
     """The host address on which the FastAPI application will run."""
 
-    port: Annotated[int, Field(default=8000, ge=1, le=65535),]
+    port: Annotated[int, Field(default=8000, ge=1, le=65535)]
     """The port number on which the FastAPI application will listen."""
 
-    num_workers: Annotated[int, Field(default=2, ge=1),]
+    num_workers: Annotated[int, Field(default=2, ge=1, le=8)]
     """The number of worker processes for the FastAPI application."""
 
     @computed_field
@@ -48,5 +48,5 @@ class AppSettings(BaseSettings):
         return self.environment == "development"
 
 
-APP_SETTINGS = AppSettings.model_validate({})
+APP_SETTINGS: AppSettings = AppSettings.model_validate({})
 """Instance of the AppSettings class containing the validated environment settings."""

@@ -21,9 +21,15 @@ async def open_database_connection_pool() -> None:
         return
 
     try:
-        await engine.start_connection_pool(**POSTGRES_POOL_SETTINGS.model_dump())
+        await engine.start_connection_pool(
+            **{
+                key: value
+                for key, value in POSTGRES_POOL_SETTINGS.model_dump().items()
+                if key not in ("max_connections",)
+            }
+        )
 
-    except (OSError, PostgresError):
+    except OSError, PostgresError:
         _LOGGER.exception("Unable to open the database connection pool: %s")
 
     else:
@@ -41,7 +47,7 @@ async def close_database_connection_pool() -> None:
     try:
         await engine.close_connection_pool()
 
-    except (OSError, PostgresError):
+    except OSError, PostgresError:
         _LOGGER.exception("Error while closing the database connection pool.")
 
     else:
