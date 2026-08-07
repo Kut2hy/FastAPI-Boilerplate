@@ -1,0 +1,38 @@
+[project]
+name = "fastapi-boilerplate"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Kut2hy", email = "vojtakuthan@seznam.cz" }
+]
+requires-python = ">=3.14.5"
+dependencies = [
+    "argon2-cffi>=25.1.0",
+    "fastapi[standard]>=0.141.1",
+    "httptools>=0.8.0",
+    "jinjax>=0.65",
+    "piccolo[all]>=1.36.0",
+    "py-redis>=1.1.1",
+    "pyjwt>=2.13.0",
+    "pytest-redis>=4.0.0",
+    "uvloop>=0.22.1",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.9.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.16.1",
+]
+
+[tool.ruff]
+target-version = "py314"
+src = ["app", ]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
