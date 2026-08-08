@@ -1,3 +1,6 @@
+# NodeJS/ Bun installation
+node_modules/
+
 # Exclude VS Code settings folder
 .vscode/
 

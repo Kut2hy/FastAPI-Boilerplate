@@ -1,0 +1,6 @@
+@import "tailwindcss";
+
+/* Super important to hide elements with x-cloak until Alpine.js is loaded and removes the attribute */
+[x-cloak] {
+  display: none !important;
+}
