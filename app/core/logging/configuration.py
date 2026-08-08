@@ -11,6 +11,7 @@ class LoggingSettings(BaseSettings):
     """Pydantic environment settings for logging configuration."""
 
     model_config = SettingsConfigDict(
+        frozen=True,
         env_file=".env",
         env_prefix="LOGGING_",
         env_file_encoding="utf-8",

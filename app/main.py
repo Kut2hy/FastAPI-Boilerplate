@@ -1,11 +1,13 @@
 """FastAPI application entry point."""
 
-from fastapi import FastAPI
+from typing import Annotated
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-
+from redis.asyncio import Redis
 from app.app_config import APP_SETTINGS
 from app.life_cycle import life_cycle
+from app.core.redis.dependencies import get_redis_client
 
 app = FastAPI(
     title=APP_SETTINGS.title,
@@ -45,3 +47,17 @@ async def health_check_pg():
     result = await engine.run_ddl("SELECT 1;")
 
     return {"status": "ok" if result == [(1,)] else "error"}
+
+
+@app.get("/health-check/redis")
+async def health_check_redis(
+    redis_client: Annotated[Redis, Depends(get_redis_client())],
+):
+    try:
+        pong = await redis_client.ping()
+
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
+
+    else:
+        return {"status": "ok" if pong else "error"}

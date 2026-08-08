@@ -10,6 +10,7 @@ class PGConnectionSettings(BaseSettings):
     """Pydantic environment settings for the application."""
 
     model_config = SettingsConfigDict(
+        frozen=True,
         env_file=".env",
         env_prefix="POSTGRES_",
         env_file_encoding="utf-8",
@@ -48,6 +49,7 @@ class PGPoolSettings(BaseSettings):
     """Pydantic environment settings for the connection pool."""
 
     model_config = SettingsConfigDict(
+        frozen=True,
         env_file=".env",
         env_prefix="POOL_POSTGRES_",
         env_file_encoding="utf-8",

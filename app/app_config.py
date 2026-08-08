@@ -11,6 +11,7 @@ class AppSettings(BaseSettings):
     """Pydantic environment settings for the FastAPI application."""
 
     model_config = SettingsConfigDict(
+        frozen=True,
         env_file=".env",
         env_prefix="APP_",
         env_file_encoding="utf-8",
