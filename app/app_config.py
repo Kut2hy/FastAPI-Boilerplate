@@ -3,7 +3,7 @@
 from pathlib import Path
 from typing import Annotated, Literal
 
-from pydantic import AnyUrl, Field, computed_field
+from pydantic import Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,7 +27,7 @@ class AppSettings(BaseSettings):
     environment: Annotated[Literal["development", "production"], Field(default="development")]
     """The current environment of the application."""
 
-    host: Annotated[Literal["127.0.0.1", "localhost"] | AnyUrl, Field(default="127.0.0.1")]
+    host: Annotated[str, Field(default="127.0.0.1")]
     """The host address on which the FastAPI application will run."""
 
     public_host: Annotated[str | None, Field(default=None, max_length=253)]

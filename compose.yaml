@@ -1,0 +1,106 @@
+name: fastapi-boilerplate
+
+x-app-build: &app-build
+  context: .
+  args:
+    UID: ${UID:-1000}
+    GID: ${GID:-1000}
+
+x-app-environment: &app-environment
+  APP_HOST: 0.0.0.0
+  APP_PUBLIC_HOST: localhost # TrustedHostMiddleware rejects the browser's Host header otherwise
+  APP_NUM_WORKERS: "1"
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  LOGGING_DIRECTORY: /srv/log
+  HOSTNAME: localhost
+
+x-app-volumes: &app-volumes
+  - .:/srv/app
+  - ./logs:/srv/log
+
+services:
+  postgres:
+    image: postgres:18.4-trixie
+    environment:
+      POSTGRES_USER: ${_POSTGRES_USER:-my_production_user}
+      POSTGRES_PASSWORD: ${_POSTGRES_PASSWORD:-my_secure_password}
+      POSTGRES_DB: ${_POSTGRES_DATABASE:-fastapidb}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${_POSTGRES_USER:-my_production_user} -d ${_POSTGRES_DATABASE:-fastapidb}
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.0.2-alpine
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    ports:
+      - "127.0.0.1:6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  app:
+    build: *app-build
+    env_file: .env
+    environment: *app-environment
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes: *app-volumes
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:5
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "127.0.0.1:8025:8025"
+      - "127.0.0.1:1025:1025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  migrate:
+    profiles: ["tools"]
+    build: *app-build
+    env_file: .env
+    environment: *app-environment
+    volumes: *app-volumes
+    command: ["piccolo", "migrations", "forwards", "all"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+volumes:
+  pgdata:

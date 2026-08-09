@@ -1,0 +1,50 @@
+# --- VCS / CI ---
+.git/
+.gitignore
+.github/
+.dockerignore
+
+# --- Secrets & credentials ---
+.env
+.env.*
+.env_*
+**/*.pem
+**/*.key
+
+# --- Docker ---
+Dockerfile*
+compose*.yaml
+docker-compose*.yml
+.docker/
+
+# --- Python artifacts ---
+**/__pycache__/
+**/*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+.python-version
+
+# --- Tooling caches ---
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# --- Tests ---
+**/_unittests/
+
+# --- Node / frontend deps (installed during build) ---
+node_modules/
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+**/.DS_Store
+
+# --- Runtime output ---
+logs/
+*.log

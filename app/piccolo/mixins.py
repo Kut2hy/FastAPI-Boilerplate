@@ -4,7 +4,7 @@ from datetime import datetime
 
 from piccolo.columns import OnDelete, OnUpdate
 from piccolo.columns.column_types import UUID, Boolean, ForeignKey, Timestamptz
-from piccolo.columns.defaults import UUID4, TimestamptzNow
+from piccolo.columns.defaults import UUID7, TimestamptzNow
 from piccolo.columns.reference import LazyTableReference
 
 USER_ACCOUNT_CLASS_NAME = "UserAccount"
@@ -22,7 +22,7 @@ class PKMixin:
 
     id = UUID(
         primary_key=True,
-        default=UUID4(),
+        default=UUID7(),
         null=False,
     )
     """Primary key column with a UUID value."""
