@@ -1,3 +1,6 @@
+# Deploy env
+.env_rosti
+
 # NodeJS/ Bun installation
 node_modules/
 

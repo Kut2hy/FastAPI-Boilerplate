@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: deploy-production
+  group: deploy-development
   cancel-in-progress: false
 
 env:
@@ -22,6 +22,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    environment:
+      name: development
+      url: https://test-9210.rostiapp.cz
 
     steps:
     - name: Checkout
