@@ -6,6 +6,9 @@ from pydantic import AnyUrl, Field, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+# NOTE: VPS is running:
+#   redis_version:8.0.2
+
 class RedisSettings(BaseSettings):
     """Pydantic environment settings for Redis."""
 
