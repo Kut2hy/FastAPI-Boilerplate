@@ -40,11 +40,11 @@ jobs:
 
     - name: Pin server host key
       env:
-        ROSTI_SSH_HOST_KEY: ${{ vars.ROSTI_SSH_HOST_KEY }}
+        ROSTI_SSH_HOST_KEY: ${{ secrets.ROSTI_SSH_HOST_KEY }}
       run: |
         set -euo pipefail
         if [ -z "${ROSTI_SSH_HOST_KEY}" ]; then
-          echo "::error::Repository variable ROSTI_SSH_HOST_KEY is not set. Copy the SSH host key from the Rosti administration."
+          echo "::error::Secret ROSTI_SSH_HOST_KEY is not set. Copy the SSH host key from the Rosti administration."
           exit 1
         fi
         mkdir -p ~/.ssh
