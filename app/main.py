@@ -46,6 +46,10 @@ app.add_middleware(
 async def health_check():
     return {"status": "ok"}
 
+@app.get("/")
+async def root():
+    return {"message": "Welcome to the FastAPI application!"}
+
 
 @app.get("/health-check/pg")
 async def health_check_pg():

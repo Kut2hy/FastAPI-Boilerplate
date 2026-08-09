@@ -96,7 +96,7 @@ if __name__ == "__main__":
         loop="uvloop",
         http="httptools",
         reload=APP_SETTINGS.in_development,
-        reload_dirs=[str(PROJECT_ROOT / "app")],
+        reload_dirs=[str(PROJECT_ROOT / "app")] if APP_SETTINGS.in_development else None,
         log_level=LOG_CONFIG.get("root", {}).get("level", "info"),
         log_config=LOG_CONFIG,
         limit_concurrency=1000,
