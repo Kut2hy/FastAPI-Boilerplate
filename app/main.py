@@ -18,9 +18,19 @@ app = FastAPI(
     redoc_url="/redoc" if APP_SETTINGS.in_development else None,
 )
 
+ALLOWED_HOSTS = [str(APP_SETTINGS.host), f"{APP_SETTINGS.host}:{APP_SETTINGS.port}"]
+"""Host header values accepted by the application."""
+
+ALLOWED_ORIGINS = [f"http://{APP_SETTINGS.host}:{APP_SETTINGS.port}"]
+"""Origins accepted by the CORS middleware."""
+
+if APP_SETTINGS.public_host:
+    ALLOWED_HOSTS.append(APP_SETTINGS.public_host)
+    ALLOWED_ORIGINS.append(f"https://{APP_SETTINGS.public_host}")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[f"http://{APP_SETTINGS.host}:{APP_SETTINGS.port}"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,7 +38,7 @@ app.add_middleware(
 
 app.add_middleware(
     TrustedHostMiddleware,
-    allowed_hosts=[str(APP_SETTINGS.host), f"{APP_SETTINGS.host}:{APP_SETTINGS.port}"],
+    allowed_hosts=ALLOWED_HOSTS,
 )
 
 

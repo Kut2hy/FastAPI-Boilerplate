@@ -1,0 +1,196 @@
+name: Deploy to Rosti.cz
+
+on:
+  workflow_dispatch:
+
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  ROSTI_USER: app
+  ROSTI_HOST: ssh.rosti.cz
+  ROSTI_PORT: "14205"
+  APP_DOMAIN: test-9210.rostiapp.cz
+  REMOTE_DIR: /srv/app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+      with:
+        ref: main
+        fetch-depth: 1
+
+    - name: Start SSH agent
+      uses: webfactory/ssh-agent@v0.9.1
+      with:
+        ssh-private-key: ${{ secrets.ROSTI_SSH_KEY }}
+
+    - name: Pin server host key
+      env:
+        ROSTI_SSH_HOST_KEY: ${{ vars.ROSTI_SSH_HOST_KEY }}
+      run: |
+        set -euo pipefail
+        if [ -z "${ROSTI_SSH_HOST_KEY}" ]; then
+          echo "::error::Repository variable ROSTI_SSH_HOST_KEY is not set. Copy the SSH host key from the Rosti administration."
+          exit 1
+        fi
+        mkdir -p ~/.ssh
+        chmod 700 ~/.ssh
+        printf '[%s]:%s %s\n' "$ROSTI_HOST" "$ROSTI_PORT" "$ROSTI_SSH_HOST_KEY" > ~/.ssh/known_hosts
+        chmod 600 ~/.ssh/known_hosts
+
+    - name: Upload source code
+      run: |
+        set -euo pipefail
+        rsync -rlptz --delete \
+          -e "ssh -p ${ROSTI_PORT}" \
+          --exclude '.git/' \
+          --exclude '.github/' \
+          --exclude '.venv/' \
+          --exclude '.env' \
+          --exclude 'logs/' \
+          --exclude 'node_modules/' \
+          --exclude '__pycache__/' \
+          --exclude '.ruff_cache/' \
+          --exclude '.pytest_cache/' \
+          --exclude '.idea/' \
+          --exclude '.vscode/' \
+          ./ "${ROSTI_USER}@${ROSTI_HOST}:${REMOTE_DIR}/"
+
+    - name: Write .env
+      env:
+        APP_ENV_FILE: ${{ secrets.ENV }}
+      run: |
+        set -euo pipefail
+        if [ -z "${APP_ENV_FILE}" ]; then
+          echo "::error::Secret ENV is not set."
+          exit 1
+        fi
+        printf '%s\n' "$APP_ENV_FILE" \
+          | ssh -p "$ROSTI_PORT" "${ROSTI_USER}@${ROSTI_HOST}" \
+              'umask 077 && cat > /srv/app/.env'
+
+    - name: Install dependencies
+      run: |
+        set -euo pipefail
+        ssh -p "$ROSTI_PORT" "${ROSTI_USER}@${ROSTI_HOST}" bash -s <<'REMOTE'
+        set -euo pipefail
+
+        export PATH="$HOME/.local/bin:$PATH"
+        export UV_CACHE_DIR=/srv/var/uv-cache
+        export UV_PYTHON_INSTALL_DIR=/srv/var/uv-python
+
+        if ! command -v uv >/dev/null 2>&1; then
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+        fi
+
+        cd /srv/app
+        uv sync --frozen --no-dev
+
+        # The plan offers only 1 GB of disk, so the download cache is not kept between deployments.
+        uv cache prune --ci
+        REMOTE
+
+    - name: Configure supervisor and nginx
+      run: |
+        set -euo pipefail
+        ssh -p "$ROSTI_PORT" "${ROSTI_USER}@${ROSTI_HOST}" bash -s <<'REMOTE'
+        set -euo pipefail
+
+        mkdir -p /srv/conf/supervisor.d /srv/conf/nginx.d
+
+        # Drop pre-existing definitions of [program:app] so supervisor does not see a duplicate section.
+        for conf in /srv/conf/supervisor.d/*; do
+          if [ -f "$conf" ] && [ "$conf" != "/srv/conf/supervisor.d/app.conf" ]; then
+            if grep -q '^\[program:app\]' "$conf"; then
+              rm -f "$conf"
+            fi
+          fi
+        done
+
+        cat > /srv/conf/supervisor.d/app.conf <<'CONF'
+        [program:app]
+        command=/srv/app/.venv/bin/python /srv/app/start_app.py
+        directory=/srv/app
+        autostart=true
+        autorestart=true
+        startsecs=10
+        stopasgroup=true
+        killasgroup=true
+        stopwaitsecs=20
+        stdout_logfile=/srv/log/app.log
+        stdout_logfile_maxbytes=2MB
+        stdout_logfile_backups=5
+        redirect_stderr=true
+        CONF
+
+        cat > /srv/conf/nginx.d/app.conf <<'CONF'
+        server {
+            listen       0.0.0.0:8000;
+            listen       [::]:8000;
+
+            client_max_body_size 16m;
+
+            location /static/ {
+                alias /srv/app/static/;
+                access_log off;
+                expires 7d;
+            }
+
+            location / {
+                proxy_pass         http://127.0.0.1:8080/;
+                proxy_redirect     default;
+                proxy_set_header   X-Real-IP  $remote_addr;
+                proxy_set_header   Host       $host;
+            }
+        }
+        CONF
+        REMOTE
+
+    - name: Restart application
+      run: |
+        set -euo pipefail
+        ssh -p "$ROSTI_PORT" "${ROSTI_USER}@${ROSTI_HOST}" bash -s <<'REMOTE'
+        set -euo pipefail
+
+        supervisorctl reread
+        supervisorctl update
+        supervisorctl restart app
+        supervisorctl restart nginx
+        supervisorctl status
+        REMOTE
+
+    - name: Health check
+      run: |
+        set -euo pipefail
+        ssh -p "$ROSTI_PORT" "${ROSTI_USER}@${ROSTI_HOST}" bash -s <<'REMOTE'
+        set -euo pipefail
+
+        for attempt in $(seq 1 20); do
+          if curl -fsS --max-time 5 http://127.0.0.1:8000/health-check/app; then
+            echo "Application is up after ${attempt} attempt(s)."
+            exit 0
+          fi
+          sleep 3
+        done
+
+        echo "Application did not become healthy, last 50 log lines:"
+        tail -n 50 /srv/log/app.log || true
+        exit 1
+        REMOTE
+
+    - name: Public endpoint check
+      run: |
+        set -euo pipefail
+        curl -fsS --max-time 10 --retry 5 --retry-delay 3 --retry-all-errors \
+          "https://${APP_DOMAIN}/health-check/app"

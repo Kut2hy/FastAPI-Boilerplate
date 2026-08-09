@@ -30,6 +30,9 @@ class AppSettings(BaseSettings):
     host: Annotated[Literal["127.0.0.1", "localhost"] | AnyUrl, Field(default="127.0.0.1")]
     """The host address on which the FastAPI application will run."""
 
+    public_host: Annotated[str | None, Field(default=None, max_length=253)]
+    """The public domain the application is served on behind a reverse proxy."""
+
     port: Annotated[int, Field(default=8000, ge=1, le=65535)]
     """The port number on which the FastAPI application will listen."""
 
