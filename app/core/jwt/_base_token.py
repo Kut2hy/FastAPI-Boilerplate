@@ -51,6 +51,9 @@ class BaseToken:
     time_to_live: int = 3600
     """The time to live for the token, in seconds. Subclasses must override this to set a different time to live."""
 
+    acceptable_leeway: int = 0
+    """The leeway for token expiration, in seconds. Subclasses can override this to set a different leeway."""
+
     __slots__ = (
         "audience",
         "expiration",

@@ -18,14 +18,17 @@ class RefreshTokenSettings(BaseSettings):
             dotenv_filtering="match_prefix",
         )
 
-    secret_key: SecretStr = Field(min_length=32, max_length=128)
+    secret_key: SecretStr = Field(min_length=64, max_length=128)
     """The secret key used to sign the refresh token. It should be a long, random string to ensure security."""
 
     algorithm: str = Field(default="HS512")
     """The algorithm used to sign the refresh token. Default is HS512."""
 
-    time_to_live: int = Field(default=60, ge=1)
-    """The time to live for the refresh token in seconds. Default is 60 seconds (1 minute)."""
+    time_to_live: int = Field(default=60 * 60 * 24 * 14, ge=1)
+    """The time to live for the refresh token in seconds. Default is 1209600 seconds (14 days)."""
+
+    acceptable_leeway: int = Field(default=5, ge=0)
+    """The leeway for token expiration in seconds. Default is 5 seconds."""
 
 
 REFRESH_TOKEN_SETTINGS: RefreshTokenSettings = RefreshTokenSettings.model_validate({})
@@ -74,19 +77,14 @@ class RefreshToken(BaseToken):
     algorithm: str = "HS512"
     """The algorithm used to sign the refresh token."""
 
-    allowed_extra_claims: frozenset[str] = frozenset(
-        {
-            # Access Token hash. This can be used to validate that the access token was issued with the refresh token.
-            "at_hash",
-        }
-    )
-    """A set of allowed extra claims that can be included in the refresh token."""
-
     _issuer: str = _ISSUER
     """The issuer claim value for the refresh token."""
 
-    time_to_live: int = 2592000  # 30 days in seconds
+    time_to_live: int = REFRESH_TOKEN_SETTINGS.time_to_live
     """The time to live for the refresh token in seconds."""
+
+    acceptable_leeway: int = REFRESH_TOKEN_SETTINGS.acceptable_leeway
+    """The leeway for token expiration in seconds."""
 
     _secret_key: str = REFRESH_TOKEN_SETTINGS.secret_key.get_secret_value()
     """The secret key used to sign the refresh token."""

@@ -1,13 +1,25 @@
 """FastAPI application entry point."""
 
+from datetime import datetime, timezone
 from typing import Annotated
-from fastapi import FastAPI, Depends
+from uuid import UUID
+
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
+from starlette.exceptions import HTTPException as StarletteHTTPException
+
 from app.app_config import APP_SETTINGS
-from app.life_cycle import life_cycle
+from app.common.exceptions import http_exception_handler, unhandled_exception_handler
+from app.common.middleware.localization import LocalizationMiddleware
+from app.core.jwt.access_token import ACCESS_TOKEN_COOKIE_KWARGS, AccessToken
+from app.core.jwt.middleware import JWTMiddleware
+from app.core.jwt.refresh_token import REFRESH_TOKEN_COOKIE_KWARGS, RefreshToken
 from app.core.redis.dependencies import get_redis_client
+from app.life_cycle import life_cycle
+from app.piccolo.tables.refresh_token import add_refresh_token
 
 app = FastAPI(
     title=APP_SETTINGS.title,
@@ -28,6 +40,25 @@ if APP_SETTINGS.public_host:
     ALLOWED_HOSTS.append(APP_SETTINGS.public_host)
     ALLOWED_ORIGINS.append(f"https://{APP_SETTINGS.public_host}")
 
+
+# ======================================================================================================================
+# Exception handlers
+# ======================================================================================================================
+# For unhandled exceptions, add a generic handler that returns a 500 response with a generic message.
+app.add_exception_handler(Exception, unhandled_exception_handler)
+
+app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+
+# ======================================================================================================================
+# Middleware (executed in reverse order of registration: last added = outermost)
+# ======================================================================================================================
+# Order of middleware execution:
+#   - Incoming request: last to first (outermost to innermost)
+#   - Outgoing response: first to last (innermost to outermost)
+app.add_middleware(JWTMiddleware)
+
+app.add_middleware(LocalizationMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -46,8 +77,9 @@ app.add_middleware(
 async def health_check():
     return {"status": "ok"}
 
+
 @app.get("/")
-async def root():
+async def root(request: Request):
     return {"message": "Welcome to the FastAPI application!"}
 
 
@@ -75,3 +107,37 @@ async def health_check_redis(
 
     else:
         return {"status": "ok" if pong else "error"}
+
+
+@app.post("/fake-login")
+async def fake_login():
+    response = JSONResponse(content={"message": "This is a fake login endpoint."})
+
+    _id = UUID("01a0014b-2803-72b7-9b72-222f85931aa7")
+
+    access_token = AccessToken.generate_token(subject=_id, alias="asd", roles=",".join(["role1", "role2"]))
+    refresh_token = RefreshToken.generate_token(subject=_id)
+
+    response.set_cookie(
+        **ACCESS_TOKEN_COOKIE_KWARGS,
+        value=str(access_token),
+        expires=datetime.fromtimestamp(access_token.expiration, tz=timezone.utc),
+    )
+    response.set_cookie(
+        **REFRESH_TOKEN_COOKIE_KWARGS,
+        value=str(refresh_token),
+        expires=datetime.fromtimestamp(refresh_token.expiration, tz=timezone.utc),
+    )
+
+    if not await add_refresh_token(
+        token_id=refresh_token.token_id,
+        user_id=refresh_token.subject,
+        issued_at=refresh_token.issued_at,
+        expires_at=refresh_token.expiration,
+    ):
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Failed to add refresh token to the database."},
+        )
+
+    return response

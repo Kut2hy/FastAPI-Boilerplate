@@ -48,4 +48,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=5s --start-period=30s --retries=5 \
     CMD curl -fsS -H "Host: localhost" http://127.0.0.1:8000/health-check/app || exit 1
 
-CMD ["python", "start_app.py", "--development"]
+CMD ["python", "start_app.py"]

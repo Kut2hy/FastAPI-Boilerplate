@@ -1,7 +1,11 @@
 """Piccolo table for persisting JWT refresh tokens."""
 
+from time import time
+from uuid import UUID
+
 from piccolo.columns import (
     BigInt,
+    Boolean,
     ForeignKey,
     OnDelete,
     OnUpdate,
@@ -11,6 +15,9 @@ from piccolo.constraints import Check, Unique
 from piccolo.table import Table
 
 from app.piccolo.mixins import CreatedAtMixin, PKMixin
+from app.core.jwt.refresh_token import RefreshToken as JWTRefreshToken
+from app.core.jwt.access_token import AccessToken as JWTAccessToken
+from app.piccolo.tables.user_account import UserAccount
 
 
 class RefreshToken(CreatedAtMixin, PKMixin, Table):
@@ -31,6 +38,9 @@ class RefreshToken(CreatedAtMixin, PKMixin, Table):
     expires_at = BigInt(null=False)
     """Epoch time indicating when the token will expire. Matches value from JWT `exp` claim."""
 
+    was_revoked = Boolean(null=False, default=False)
+    """Indicates whether the token was revoked. Defaults to False."""
+
     # ==================================================================================================================
     # Constraints
     # ==================================================================================================================
@@ -46,3 +56,82 @@ class RefreshToken(CreatedAtMixin, PKMixin, Table):
 
     check_expiration = Check(condition="expires_at > issued_at", name="check_expiration")
     """Check constraint to ensure that the expiration time is greater than the issued time."""
+
+
+async def add_refresh_token(
+    token_id: UUID,
+    user_id: UUID,
+    issued_at: int,
+    expires_at: int,
+) -> bool:
+    async with RefreshToken._meta.db.transaction():  # noqa: SLF001
+        result = (
+            await RefreshToken(
+                {
+                    RefreshToken.id: token_id,
+                    RefreshToken.user_id: user_id,
+                    RefreshToken.issued_at: issued_at,
+                    RefreshToken.expires_at: expires_at,
+                }
+            )
+            .save()
+            .returning(RefreshToken.id)
+        )
+
+        return bool(result)
+
+
+async def get_users_refresh_token(token_id: UUID, user_id: UUID) -> dict | None:
+    """Retrieve a refresh token by its ID and user ID.
+
+    Args:
+        token_id (UUID): The unique identifier of the refresh token.
+        user_id (UUID): The unique identifier of the user associated with the refresh token.
+
+    Returns:
+        dict | None: The refresh token data as a dictionary if found, otherwise None.
+
+    """
+    async with RefreshToken._meta.db.transaction():  # noqa: SLF001
+        return (
+            await RefreshToken.select(
+                RefreshToken.expires_at,
+                RefreshToken.issued_at,
+                RefreshToken.user_id.user_alias.as_alias("user_alias"),
+                RefreshToken.user_id.granted_roles.as_alias("user_granted_roles"),
+            )
+            .where(
+                (RefreshToken.id == token_id)
+                & (RefreshToken.user_id == user_id)
+                & (RefreshToken.was_revoked == False)  # noqa: E712
+                & (RefreshToken.expires_at > int(time()))
+            )
+            .lock_rows(of=(RefreshToken,))
+            .first()
+        )
+
+
+async def regenerate_access_token(token: JWTRefreshToken) -> JWTAccessToken | None:
+
+    async with RefreshToken._meta.db.transaction():  # noqa: SLF001
+        existing_token = (
+            await RefreshToken.objects(RefreshToken.user_id)
+            .where(
+                (RefreshToken.id == token.token_id)
+                & (RefreshToken.user_id == token.subject)
+                & (RefreshToken.was_revoked == False)  # noqa: E712
+                & (RefreshToken.expires_at > int(time()))
+            )
+            .lock_rows(of=(RefreshToken,))
+            .first()
+        )
+
+        if not existing_token:
+            return None
+
+        # Generate new access and refresh tokens
+        return JWTAccessToken.generate_token(
+            subject=token.subject,
+            alias=existing_token.user_id.user_alias,
+            roles=",".join(existing_token.user_id.granted_roles),
+        )

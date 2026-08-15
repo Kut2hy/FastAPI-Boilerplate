@@ -19,14 +19,17 @@ class AccessTokenSettings(BaseSettings):
             dotenv_filtering="match_prefix",
         )
 
-    secret_key: SecretStr = Field(min_length=32, max_length=128)
+    secret_key: SecretStr = Field(min_length=64, max_length=128)
     """The secret key used to sign the access token. It should be a long, random string to ensure security."""
 
     algorithm: str = Field(default="HS512")
     """The algorithm used to sign the access token. Default is HS512."""
 
-    time_to_live: int = Field(default=60, ge=1)
-    """The time to live for the access token in seconds. Default is 60 seconds (1 minute)."""
+    time_to_live: int = Field(default=60 * 10, ge=1)
+    """The time to live for the access token in seconds. Default is 600 seconds (10 minutes)."""
+
+    acceptable_leeway: int = Field(default=5, ge=0)
+    """The leeway for token expiration in seconds. Default is 5 seconds."""
 
 
 ACCESS_TOKEN_SETTINGS: AccessTokenSettings = AccessTokenSettings.model_validate({})
@@ -73,7 +76,7 @@ class AccessToken(BaseToken):
     algorithm: str = ACCESS_TOKEN_SETTINGS.algorithm
     """The algorithm used to sign the access token."""
 
-    allowed_extra_claims: frozenset[str] = frozenset(("roles", "rt_hash", "alias"))
+    allowed_extra_claims: frozenset[str] = frozenset(("roles", "alias"))
     """A set of allowed extra claims that can be included in the access token."""
 
     _issuer: str = _ISSUER
@@ -81,6 +84,9 @@ class AccessToken(BaseToken):
 
     time_to_live: int = ACCESS_TOKEN_SETTINGS.time_to_live
     """The time to live for the access token in seconds."""
+
+    acceptable_leeway: int = ACCESS_TOKEN_SETTINGS.acceptable_leeway
+    """The leeway for token expiration in seconds."""
 
     _secret_key: str = ACCESS_TOKEN_SETTINGS.secret_key.get_secret_value()
     """The secret key used to sign the access token."""

@@ -11,3 +11,7 @@ class JWTTypeError(TypeError):
 
 class JWTValueError(ValueError):
     """Exception raised when a JWT token has invalid values or claims."""
+
+
+class MissingJWTClaimsError(Exception):
+    """Exception raised when a token produced by this application is structurally invalid (missing required claims)."""
