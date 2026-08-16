@@ -100,7 +100,7 @@ LOG_CONFIG: dict = {
             "encoding": "utf-8",
         },
         "queue_default": {
-            "class": "app.core.logging.handlers.PreservingQueueHandler",
+            "class": "app.core.app_logging.handlers.PreservingQueueHandler",
             "listener": "logging.handlers.QueueListener",
             "handlers": [
                 "stream_default",
@@ -109,7 +109,7 @@ LOG_CONFIG: dict = {
             "respect_handler_level": True,
         },
         "queue_access": {
-            "class": "app.core.logging.handlers.PreservingQueueHandler",
+            "class": "app.core.app_logging.handlers.PreservingQueueHandler",
             "listener": "logging.handlers.QueueListener",
             "handlers": [
                 "stream_access",

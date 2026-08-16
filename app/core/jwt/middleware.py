@@ -17,6 +17,8 @@ from app.core.jwt.credentials import FrozenAuthCredentials
 from app.core.jwt.exceptions import MissingJWTClaimsError
 from app.core.jwt.refresh_token import REFRESH_TOKEN_COOKIE_KWARGS, RefreshToken
 from app.core.jwt.users import AuthenticatedUser, UnauthenticatedUser
+from app.core.redis.dependencies import IN_STATE_NAME
+from app.core.redis.functions import is_refresh_token_blacklisted
 from app.i18n.context_translations import gettext
 from app.piccolo.tables.refresh_token import regenerate_access_token
 
@@ -80,26 +82,28 @@ class JWTMiddleware:
 
         try:
             access_token = self.validate_token(access_token_cookie_str, AccessToken)
+            refresh_token = self.validate_token(refresh_token_cookie_str, RefreshToken)
 
-            if isinstance(access_token, AccessToken):
-                # ======================================================================================================
-                # Authenticated access with valid access token — nothing else to do.
-                # ======================================================================================================
+            # Validation of Redis blacklist. Key/attribute name is driven by RedisSettings,
+            # not hardcoded — the client is stored on app.state under IN_STATE_NAME at startup.
+            is_blacklisted = (
+                await is_refresh_token_blacklisted(refresh_token, getattr(connection.app.state, IN_STATE_NAME))
+                if isinstance(refresh_token, RefreshToken)
+                else False
+            )
+
+            if isinstance(access_token, AccessToken) and isinstance(refresh_token, RefreshToken) and not is_blacklisted:
                 self.set_auth_context(scope, access_token)
 
                 await self.app(scope, receive, send)
                 return
 
-            # The access token is missing or invalid. Fall back to the refresh token and try to
-            # mint a new access token.
-            refresh_token = self.validate_token(refresh_token_cookie_str, RefreshToken)
-
-            if isinstance(refresh_token, RefreshToken):
-                # ======================================================================================================
+            if isinstance(refresh_token, RefreshToken) and not is_blacklisted:
+                # ==================================================================================================
                 # Authenticated access with token regeneration using valid refresh token
-                # ======================================================================================================
-                # DB lookup ensures the refresh token was issued by this site, is not revoked, and
-                # has not expired. None means the token is no longer trusted.
+                # ==================================================================================================
+                # DB lookup ensures the refresh token was issued by this site, is not revoked,
+                # and has not expired. None means the token is no longer trusted.
                 regenerated_access_token = await regenerate_access_token(refresh_token)
 
                 if regenerated_access_token is not None:
@@ -110,9 +114,9 @@ class JWTMiddleware:
                     delete_cookies = True
 
             else:
-                # ======================================================================================================
+                # ==================================================================================================
                 # Unauthenticated access with invalid refresh token
-                # ======================================================================================================
+                # ==================================================================================================
                 delete_cookies = True
 
         except PostgresError, InterfaceError, OSError, TimeoutError:
@@ -199,7 +203,7 @@ class JWTMiddleware:
         return token
 
     @staticmethod
-    def set_auth_context(scope: Scope, token: AccessToken) -> None:
+    def set_auth_context(scope: Scope, access_token: AccessToken) -> None:
         """Populate the scope's user/auth from a valid access token's claims.
 
         A correctly-signed access token that is missing the required ``alias`` claim (or carries a
@@ -208,22 +212,22 @@ class JWTMiddleware:
 
         Args:
             scope (Scope): The ASGI scope to mutate.
-            token (AccessToken): The validated access token to read claims from.
+            access_token (AccessToken): The validated access token to read claims from.
 
         Raises:
             MissingJWTClaimsError: If the required ``alias`` claim is missing or empty.
 
         """
-        if "alias" not in token.extra_claims or not token.extra_claims["alias"]:
+        if "alias" not in access_token.extra_claims or not access_token.extra_claims["alias"]:
             raise MissingJWTClaimsError("Access token is missing the required 'alias' claim.")
 
-        if "roles" not in token.extra_claims:
+        if "roles" not in access_token.extra_claims:
             raise MissingJWTClaimsError("Access token is missing the required 'roles' claim.")
 
-        username = token.extra_claims["alias"]
-        roles = token.extra_claims["roles"]
+        username = access_token.extra_claims["alias"]
+        roles = access_token.extra_claims["roles"]
 
-        scope["user"] = AuthenticatedUser(username=username, uuid=token.subject)
+        scope["user"] = AuthenticatedUser(username=username, uuid=access_token.subject)
         scope["auth"] = FrozenAuthCredentials(scopes=roles.strip().split(",") if roles else [])
 
     @staticmethod

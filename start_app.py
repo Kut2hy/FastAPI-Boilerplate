@@ -44,7 +44,7 @@ def __set_permissions(directory: Path, dir_mode: int, file_mode: int) -> None:
 def lazy_configuration_loading() -> tuple:
     """Lazy-load the logging configuration."""
     from app.app_config import APP_SETTINGS  # noqa: PLC0415
-    from app.core.logging.configuration import LOG_CONFIG  # noqa: PLC0415
+    from app.core.app_logging.configuration import LOG_CONFIG  # noqa: PLC0415
 
     return APP_SETTINGS, LOG_CONFIG
 

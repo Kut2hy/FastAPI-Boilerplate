@@ -20,6 +20,8 @@ from app.core.jwt.refresh_token import REFRESH_TOKEN_COOKIE_KWARGS, RefreshToken
 from app.core.redis.dependencies import get_redis_client
 from app.life_cycle import life_cycle
 from app.piccolo.tables.refresh_token import add_refresh_token
+from app.routes.account.v1.login import router as login_router
+from app.routes.account.v1.logout import router as logout_router
 
 app = FastAPI(
     title=APP_SETTINGS.title,
@@ -73,6 +75,10 @@ app.add_middleware(
 )
 
 
+app.include_router(login_router)
+app.include_router(logout_router)
+
+
 @app.get("/health-check/app")
 async def health_check():
     return {"status": "ok"}
@@ -107,37 +113,3 @@ async def health_check_redis(
 
     else:
         return {"status": "ok" if pong else "error"}
-
-
-@app.post("/fake-login")
-async def fake_login():
-    response = JSONResponse(content={"message": "This is a fake login endpoint."})
-
-    _id = UUID("01a0014b-2803-72b7-9b72-222f85931aa7")
-
-    access_token = AccessToken.generate_token(subject=_id, alias="asd", roles=",".join(["role1", "role2"]))
-    refresh_token = RefreshToken.generate_token(subject=_id)
-
-    response.set_cookie(
-        **ACCESS_TOKEN_COOKIE_KWARGS,
-        value=str(access_token),
-        expires=datetime.fromtimestamp(access_token.expiration, tz=timezone.utc),
-    )
-    response.set_cookie(
-        **REFRESH_TOKEN_COOKIE_KWARGS,
-        value=str(refresh_token),
-        expires=datetime.fromtimestamp(refresh_token.expiration, tz=timezone.utc),
-    )
-
-    if not await add_refresh_token(
-        token_id=refresh_token.token_id,
-        user_id=refresh_token.subject,
-        issued_at=refresh_token.issued_at,
-        expires_at=refresh_token.expiration,
-    ):
-        return JSONResponse(
-            status_code=500,
-            content={"detail": "Failed to add refresh token to the database."},
-        )
-
-    return response

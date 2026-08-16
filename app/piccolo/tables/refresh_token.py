@@ -59,19 +59,16 @@ class RefreshToken(CreatedAtMixin, PKMixin, Table):
 
 
 async def add_refresh_token(
-    token_id: UUID,
-    user_id: UUID,
-    issued_at: int,
-    expires_at: int,
+    token: JWTRefreshToken,
 ) -> bool:
     async with RefreshToken._meta.db.transaction():  # noqa: SLF001
         result = (
             await RefreshToken(
                 {
-                    RefreshToken.id: token_id,
-                    RefreshToken.user_id: user_id,
-                    RefreshToken.issued_at: issued_at,
-                    RefreshToken.expires_at: expires_at,
+                    RefreshToken.id: token.token_id,
+                    RefreshToken.user_id: token.subject,
+                    RefreshToken.issued_at: token.issued_at,
+                    RefreshToken.expires_at: token.expiration,
                 }
             )
             .save()
@@ -81,34 +78,15 @@ async def add_refresh_token(
         return bool(result)
 
 
-async def get_users_refresh_token(token_id: UUID, user_id: UUID) -> dict | None:
-    """Retrieve a refresh token by its ID and user ID.
-
-    Args:
-        token_id (UUID): The unique identifier of the refresh token.
-        user_id (UUID): The unique identifier of the user associated with the refresh token.
-
-    Returns:
-        dict | None: The refresh token data as a dictionary if found, otherwise None.
-
-    """
+async def delete_refresh_token(token: JWTRefreshToken) -> bool:
     async with RefreshToken._meta.db.transaction():  # noqa: SLF001
-        return (
-            await RefreshToken.select(
-                RefreshToken.expires_at,
-                RefreshToken.issued_at,
-                RefreshToken.user_id.user_alias.as_alias("user_alias"),
-                RefreshToken.user_id.granted_roles.as_alias("user_granted_roles"),
-            )
-            .where(
-                (RefreshToken.id == token_id)
-                & (RefreshToken.user_id == user_id)
-                & (RefreshToken.was_revoked == False)  # noqa: E712
-                & (RefreshToken.expires_at > int(time()))
-            )
-            .lock_rows(of=(RefreshToken,))
-            .first()
+        result = (
+            await RefreshToken.delete()
+            .where(RefreshToken.id == token.token_id)
+            .returning(RefreshToken.id)
         )
+
+        return bool(result)
 
 
 async def regenerate_access_token(token: JWTRefreshToken) -> JWTAccessToken | None:

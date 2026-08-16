@@ -5,9 +5,61 @@ from logging import getLogger
 from redis.asyncio import ConnectionPool, Redis
 from redis.exceptions import RedisError
 
+from app.core.jwt.access_token import AccessToken
+from app.core.jwt.refresh_token import RefreshToken
 from app.core.redis.config import REDIS_SETTINGS
 
 LOGGER = getLogger("uvicorn.error")
+
+
+REDIS_TOKEN_BLACKLIST_KEY_TEMPLATE = "refresh_token:blacklist:%(token_id)s"  # noqa: S105
+"""Redis key template for blacklisting refresh tokens."""
+
+REDIS_TOKEN_BLACKLIST_EXPIRATION = AccessToken.time_to_live + 1
+"""
+Expiration time in seconds for blacklisted refresh tokens in Redis. Set to the access token's TTL plus 1 second
+to ensure that token is removed after the access token expires.
+"""
+
+REDIS_TOKEN_BLACKLIST_VALUE = "blacklisted"  # noqa: S105
+"""Value to store in Redis for blacklisted refresh tokens."""
+
+
+async def blacklist_refresh_token(token: RefreshToken, redis: Redis) -> bool:
+    """Blacklist a refresh token in Redis.
+
+    Args:
+        token (RefreshToken): The refresh token to blacklist.
+        redis (Redis): The Redis client.
+
+    Returns:
+        bool: True if the refresh token was successfully blacklisted, False otherwise.
+
+    """
+    result = await redis.set(
+        name=REDIS_TOKEN_BLACKLIST_KEY_TEMPLATE % {"token_id": token.token_id},
+        value=REDIS_TOKEN_BLACKLIST_VALUE,
+        ex=REDIS_TOKEN_BLACKLIST_EXPIRATION,
+    )
+
+    return result is True  # redis.set returns True if the operation was successful
+
+
+async def is_refresh_token_blacklisted(token: RefreshToken, redis: Redis) -> bool:
+    """Check if a refresh token is blacklisted in Redis.
+
+    Args:
+        token (RefreshToken): The refresh token to check.
+        redis (Redis): The Redis client.
+
+    Returns:
+        bool: True if the refresh token is blacklisted, False otherwise.
+
+    """
+    result = await redis.get(name=REDIS_TOKEN_BLACKLIST_KEY_TEMPLATE % {"token_id": token.token_id})
+
+    # NOTE: "get" returns None if the key does not exist, and the string "blacklisted" if it does.
+    return result == REDIS_TOKEN_BLACKLIST_VALUE
 
 
 def build_redis_key(*args: str) -> str:

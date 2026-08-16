@@ -32,7 +32,7 @@ class UserAccount(Table, tablename="user_account", schema=None):
     )
 
 
-ID = "2026-08-15T20:20:16:008958"
+ID = "2026-08-16T16:19:58:269494"
 VERSION = "1.36.0"
 DESCRIPTION = ""
 
@@ -40,13 +40,6 @@ DESCRIPTION = ""
 async def forwards():
     manager = MigrationManager(
         migration_id=ID, app_name="app", description=DESCRIPTION
-    )
-
-    manager.add_table(
-        class_name="RefreshToken",
-        tablename="refresh_token",
-        schema=None,
-        columns=None,
     )
 
     manager.add_table(
@@ -63,133 +56,11 @@ async def forwards():
         columns=None,
     )
 
-    manager.add_column(
-        table_class_name="RefreshToken",
+    manager.add_table(
+        class_name="RefreshToken",
         tablename="refresh_token",
-        column_name="id",
-        db_column_name="id",
-        column_class_name="UUID",
-        column_class=UUID,
-        params={
-            "default": UUID7(),
-            "null": False,
-            "primary_key": True,
-            "unique": False,
-            "index": False,
-            "index_method": IndexMethod.btree,
-            "choices": None,
-            "db_column_name": None,
-            "secret": False,
-        },
         schema=None,
-    )
-
-    manager.add_column(
-        table_class_name="RefreshToken",
-        tablename="refresh_token",
-        column_name="created_at",
-        db_column_name="created_at",
-        column_class_name="Timestamptz",
-        column_class=Timestamptz,
-        params={
-            "default": TimestamptzNow(),
-            "null": False,
-            "primary_key": False,
-            "unique": False,
-            "index": False,
-            "index_method": IndexMethod.btree,
-            "choices": None,
-            "db_column_name": None,
-            "secret": False,
-        },
-        schema=None,
-    )
-
-    manager.add_column(
-        table_class_name="RefreshToken",
-        tablename="refresh_token",
-        column_name="user_id",
-        db_column_name="user_id",
-        column_class_name="ForeignKey",
-        column_class=ForeignKey,
-        params={
-            "references": UserAccount,
-            "on_delete": OnDelete.cascade,
-            "on_update": OnUpdate.cascade,
-            "target_column": None,
-            "null": False,
-            "primary_key": False,
-            "unique": False,
-            "index": True,
-            "index_method": IndexMethod.btree,
-            "choices": None,
-            "db_column_name": None,
-            "secret": False,
-        },
-        schema=None,
-    )
-
-    manager.add_column(
-        table_class_name="RefreshToken",
-        tablename="refresh_token",
-        column_name="issued_at",
-        db_column_name="issued_at",
-        column_class_name="BigInt",
-        column_class=BigInt,
-        params={
-            "default": 0,
-            "null": False,
-            "primary_key": False,
-            "unique": False,
-            "index": False,
-            "index_method": IndexMethod.btree,
-            "choices": None,
-            "db_column_name": None,
-            "secret": False,
-        },
-        schema=None,
-    )
-
-    manager.add_column(
-        table_class_name="RefreshToken",
-        tablename="refresh_token",
-        column_name="expires_at",
-        db_column_name="expires_at",
-        column_class_name="BigInt",
-        column_class=BigInt,
-        params={
-            "default": 0,
-            "null": False,
-            "primary_key": False,
-            "unique": False,
-            "index": False,
-            "index_method": IndexMethod.btree,
-            "choices": None,
-            "db_column_name": None,
-            "secret": False,
-        },
-        schema=None,
-    )
-
-    manager.add_column(
-        table_class_name="RefreshToken",
-        tablename="refresh_token",
-        column_name="was_revoked",
-        db_column_name="was_revoked",
-        column_class_name="Boolean",
-        column_class=Boolean,
-        params={
-            "default": False,
-            "null": False,
-            "primary_key": False,
-            "unique": False,
-            "index": False,
-            "index_method": IndexMethod.btree,
-            "choices": None,
-            "db_column_name": None,
-            "secret": False,
-        },
-        schema=None,
+        columns=None,
     )
 
     manager.add_column(
@@ -751,30 +622,6 @@ async def forwards():
     manager.add_column(
         table_class_name="LoginAttempt",
         tablename="login_attempt",
-        column_name="user_id",
-        db_column_name="user_id",
-        column_class_name="ForeignKey",
-        column_class=ForeignKey,
-        params={
-            "references": UserAccount,
-            "on_delete": OnDelete.cascade,
-            "on_update": OnUpdate.cascade,
-            "target_column": None,
-            "null": True,
-            "primary_key": False,
-            "unique": False,
-            "index": False,
-            "index_method": IndexMethod.btree,
-            "choices": None,
-            "db_column_name": None,
-            "secret": False,
-        },
-        schema=None,
-    )
-
-    manager.add_column(
-        table_class_name="LoginAttempt",
-        tablename="login_attempt",
         column_name="user_email",
         db_column_name="user_email",
         column_class_name="Varchar",
@@ -840,8 +687,8 @@ async def forwards():
     manager.add_column(
         table_class_name="LoginAttempt",
         tablename="login_attempt",
-        column_name="response_code",
-        db_column_name="response_code",
+        column_name="status_code",
+        db_column_name="status_code",
         column_class_name="Integer",
         column_class=Integer,
         params={
@@ -859,16 +706,36 @@ async def forwards():
     )
 
     manager.add_column(
-        table_class_name="LoginAttempt",
-        tablename="login_attempt",
-        column_name="reason",
-        db_column_name="reason",
-        column_class_name="Varchar",
-        column_class=Varchar,
+        table_class_name="RefreshToken",
+        tablename="refresh_token",
+        column_name="id",
+        db_column_name="id",
+        column_class_name="UUID",
+        column_class=UUID,
         params={
-            "length": 255,
-            "default": "",
-            "null": True,
+            "default": UUID7(),
+            "null": False,
+            "primary_key": True,
+            "unique": False,
+            "index": False,
+            "index_method": IndexMethod.btree,
+            "choices": None,
+            "db_column_name": None,
+            "secret": False,
+        },
+        schema=None,
+    )
+
+    manager.add_column(
+        table_class_name="RefreshToken",
+        tablename="refresh_token",
+        column_name="created_at",
+        db_column_name="created_at",
+        column_class_name="Timestamptz",
+        column_class=Timestamptz,
+        params={
+            "default": TimestamptzNow(),
+            "null": False,
             "primary_key": False,
             "unique": False,
             "index": False,
@@ -877,6 +744,102 @@ async def forwards():
             "db_column_name": None,
             "secret": False,
         },
+        schema=None,
+    )
+
+    manager.add_column(
+        table_class_name="RefreshToken",
+        tablename="refresh_token",
+        column_name="user_id",
+        db_column_name="user_id",
+        column_class_name="ForeignKey",
+        column_class=ForeignKey,
+        params={
+            "references": UserAccount,
+            "on_delete": OnDelete.cascade,
+            "on_update": OnUpdate.cascade,
+            "target_column": None,
+            "null": False,
+            "primary_key": False,
+            "unique": False,
+            "index": True,
+            "index_method": IndexMethod.btree,
+            "choices": None,
+            "db_column_name": None,
+            "secret": False,
+        },
+        schema=None,
+    )
+
+    manager.add_column(
+        table_class_name="RefreshToken",
+        tablename="refresh_token",
+        column_name="issued_at",
+        db_column_name="issued_at",
+        column_class_name="BigInt",
+        column_class=BigInt,
+        params={
+            "default": 0,
+            "null": False,
+            "primary_key": False,
+            "unique": False,
+            "index": False,
+            "index_method": IndexMethod.btree,
+            "choices": None,
+            "db_column_name": None,
+            "secret": False,
+        },
+        schema=None,
+    )
+
+    manager.add_column(
+        table_class_name="RefreshToken",
+        tablename="refresh_token",
+        column_name="expires_at",
+        db_column_name="expires_at",
+        column_class_name="BigInt",
+        column_class=BigInt,
+        params={
+            "default": 0,
+            "null": False,
+            "primary_key": False,
+            "unique": False,
+            "index": False,
+            "index_method": IndexMethod.btree,
+            "choices": None,
+            "db_column_name": None,
+            "secret": False,
+        },
+        schema=None,
+    )
+
+    manager.add_column(
+        table_class_name="RefreshToken",
+        tablename="refresh_token",
+        column_name="was_revoked",
+        db_column_name="was_revoked",
+        column_class_name="Boolean",
+        column_class=Boolean,
+        params={
+            "default": False,
+            "null": False,
+            "primary_key": False,
+            "unique": False,
+            "index": False,
+            "index_method": IndexMethod.btree,
+            "choices": None,
+            "db_column_name": None,
+            "secret": False,
+        },
+        schema=None,
+    )
+
+    manager.add_constraint(
+        table_class_name="UserAccount",
+        tablename="user_account",
+        constraint_name="unique_email_user_alias",
+        constraint_class=Unique,
+        params={"columns": ["email", "user_alias"], "nulls_distinct": True},
         schema=None,
     )
 
@@ -913,15 +876,6 @@ async def forwards():
         constraint_name="check_expiration",
         constraint_class=Check,
         params={"condition": "expires_at > issued_at"},
-        schema=None,
-    )
-
-    manager.add_constraint(
-        table_class_name="UserAccount",
-        tablename="user_account",
-        constraint_name="unique_email_user_alias",
-        constraint_class=Unique,
-        params={"columns": ["email", "user_alias"], "nulls_distinct": True},
         schema=None,
     )
 

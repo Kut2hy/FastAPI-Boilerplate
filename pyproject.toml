@@ -16,6 +16,7 @@ dependencies = [
     "py-redis>=1.1.1",
     "pyjwt>=2.13.0",
     "pytest-redis>=4.0.0",
+    "slowapi>=0.1.10",
     "uvloop>=0.22.1",
 ]
 
