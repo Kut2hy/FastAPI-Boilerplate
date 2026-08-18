@@ -17,7 +17,6 @@ from app.core.jwt import middleware as mw_module
 from app.core.jwt import refresh_token as rt_module
 from app.core.jwt.exceptions import MissingJWTClaimsError
 from app.core.redis.dependencies import IN_STATE_NAME
-from app.core.redis.functions import blacklist_refresh_token
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -357,72 +356,6 @@ async def test_only_access_cookie_present_but_invalid(stub_app: Callable, fake_a
 
     assert state["calls"] == 1
     assert not state["scope"]["user"].is_authenticated
-    cookies = _response_cookies(messages)
-    assert cookies["access_token"].value == ""
-    assert cookies["refresh_token"].value == ""
-
-
-# ======================================================================================================================
-# Tests — Redis blacklist
-# ======================================================================================================================
-
-
-@pytest.mark.asyncio
-async def test_blacklisted_refresh_token_with_valid_access_deletes_cookies(
-    stub_app: Callable, fake_app: Any, redis_client: Redis
-) -> None:
-    """Both tokens cryptographically valid, but the refresh token is blacklisted → unauthenticated."""
-    app, state = stub_app()
-    middleware = mw_module.JWTMiddleware(app)
-
-    user_id = uuid7()
-    token = _make_access_token(user_id)
-    refresh = _make_refresh_token(user_id)
-
-    # Blacklist the refresh token exactly as the logout endpoint does.
-    assert await blacklist_refresh_token(refresh, redis_client)
-
-    messages = await _run(
-        middleware,
-        _http_scope({"access_token": str(token), "refresh_token": str(refresh)}, app=fake_app),
-    )
-
-    assert state["calls"] == 1
-    assert not state["scope"]["user"].is_authenticated
-    cookies = _response_cookies(messages)
-    assert cookies["access_token"].value == ""
-    assert cookies["refresh_token"].value == ""
-
-
-@pytest.mark.asyncio
-async def test_blacklisted_refresh_token_does_not_regenerate(
-    stub_app: Callable, monkeypatch: pytest.MonkeyPatch, fake_app: Any, redis_client: Redis
-) -> None:
-    """Expired access + blacklisted refresh → no regeneration attempt, cookies wiped."""
-    app, state = stub_app()
-    middleware = mw_module.JWTMiddleware(app)
-
-    refresh = _make_refresh_token()
-
-    regenerate_called = False
-
-    async def fake_regenerate(token: rt_module.RefreshToken) -> at_module.AccessToken | None:
-        nonlocal regenerate_called
-        regenerate_called = True
-        return _make_access_token()
-
-    monkeypatch.setattr(mw_module, "regenerate_access_token", fake_regenerate)
-
-    assert await blacklist_refresh_token(refresh, redis_client)
-
-    messages = await _run(
-        middleware,
-        _http_scope({"access_token": "garbage.token.value", "refresh_token": str(refresh)}, app=fake_app),
-    )
-
-    assert state["calls"] == 1
-    assert not state["scope"]["user"].is_authenticated
-    assert not regenerate_called  # blacklisted refresh must never reach the DB
     cookies = _response_cookies(messages)
     assert cookies["access_token"].value == ""
     assert cookies["refresh_token"].value == ""

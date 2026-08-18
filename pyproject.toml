@@ -13,9 +13,9 @@ dependencies = [
     "httptools>=0.8.0",
     "jinjax>=0.65",
     "piccolo[all]>=1.36.0",
-    "py-redis>=1.1.1",
     "pyjwt>=2.13.0",
     "pytest-redis>=4.0.0",
+    "redis[hiredis]>=8.1.0",
     "slowapi>=0.1.10",
     "uvloop>=0.22.1",
 ]

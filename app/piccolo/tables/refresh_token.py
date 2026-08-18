@@ -61,6 +61,15 @@ class RefreshToken(CreatedAtMixin, PKMixin, Table):
 async def add_refresh_token(
     token: JWTRefreshToken,
 ) -> bool:
+    """Add a new refresh token to the database.
+
+    Args:
+        token (JWTRefreshToken): The refresh token to be added.
+
+    Returns:
+        bool: True if the token was successfully added, False otherwise.
+
+    """
     async with RefreshToken._meta.db.transaction():  # noqa: SLF001
         result = (
             await RefreshToken(
@@ -78,19 +87,61 @@ async def add_refresh_token(
         return bool(result)
 
 
-async def delete_refresh_token(token: JWTRefreshToken) -> bool:
+async def delete_refresh_token(token_id: UUID, user_id: UUID) -> UUID | None:
+    """Delete a refresh token from the database.
+
+    Args:
+        token_id (UUID): The ID of the refresh token to be deleted.
+        user_id (UUID): The ID of the user who owns the refresh token.
+
+    Returns:
+        UUID | None: The ID of the deleted refresh token if it was successfully deleted, otherwise None.
+
+    """
     async with RefreshToken._meta.db.transaction():  # noqa: SLF001
         result = (
             await RefreshToken.delete()
-            .where(RefreshToken.id == token.token_id)
+            .where((RefreshToken.id == token_id) & (RefreshToken.user_id == user_id))
             .returning(RefreshToken.id)
         )
 
-        return bool(result)
+        return result[0]["id"] if result else None
+
+
+async def delete_all_refresh_tokens(user_id: UUID) -> list[UUID]:
+    """Delete all live refresh tokens associated with a specific user.
+
+    Args:
+        user_id (UUID): The ID of the user whose refresh tokens should be deleted.
+
+    Returns:
+        list[UUID]: A list of IDs of the deleted refresh tokens.
+
+    """
+    async with RefreshToken._meta.db.transaction():  # noqa: SLF001
+        result = (
+            await RefreshToken.delete()
+            .where(
+                (RefreshToken.user_id == user_id)
+                & (RefreshToken.was_revoked == False)  # noqa: E712
+                & (RefreshToken.expires_at > int(time()))
+            )
+            .returning(RefreshToken.id)
+        )
+
+        return [row["id"] for row in result]
 
 
 async def regenerate_access_token(token: JWTRefreshToken) -> JWTAccessToken | None:
+    """Regenerate a new access token based on a valid refresh token.
 
+    Args:
+        token (JWTRefreshToken): The refresh token used to generate a new access token.
+
+    Returns:
+        JWTAccessToken | None: A new access token if the refresh token is valid, otherwise None.
+
+    """
     async with RefreshToken._meta.db.transaction():  # noqa: SLF001
         existing_token = (
             await RefreshToken.objects(RefreshToken.user_id)
@@ -112,4 +163,5 @@ async def regenerate_access_token(token: JWTRefreshToken) -> JWTAccessToken | No
             subject=token.subject,
             alias=existing_token.user_id.user_alias,
             roles=",".join(existing_token.user_id.granted_roles),
+            rt_jti=str(existing_token.id),
         )

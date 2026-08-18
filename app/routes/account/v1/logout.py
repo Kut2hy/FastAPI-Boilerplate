@@ -1,17 +1,19 @@
 """Logout route for the account API."""
 
+from logging import getLogger
 from typing import Annotated
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from asyncpg import InterfaceError, PostgresError
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 
-from app.common.dependencies.client import enforce_logged_in, get_refresh_token
-from app.core.jwt.access_token import ACCESS_TOKEN_COOKIE_KWARGS
+from app.common.dependencies.client import enforce_logged_in
+from app.common.dependencies.cookie_token import get_cookie_token
+from app.core.jwt.access_token import ACCESS_TOKEN_COOKIE_KWARGS, AccessToken
 from app.core.jwt.refresh_token import REFRESH_TOKEN_COOKIE_KWARGS, RefreshToken
-from app.core.redis.dependencies import Redis, get_redis_client
-from app.core.redis.functions import blacklist_refresh_token
 from app.i18n.context_translations import gettext
-from app.piccolo.tables.refresh_token import delete_refresh_token
+from app.piccolo.tables.refresh_token import delete_all_refresh_tokens, delete_refresh_token
 
 router = APIRouter(
     prefix="/account/v1",
@@ -19,50 +21,80 @@ router = APIRouter(
     dependencies=[Depends(enforce_logged_in())],
 )
 
+LOGGER = getLogger(__name__)
+
 
 @router.post("/logout")
 async def logout(
-    refresh_token: Annotated[RefreshToken | None, Depends(get_refresh_token)],
-    redis: Annotated[Redis, Depends(get_redis_client())],
+    request: Request,
+    access_token: Annotated[AccessToken | None, Depends(get_cookie_token(token_type=AccessToken))],
+    refresh_token: Annotated[RefreshToken | None, Depends(get_cookie_token(token_type=RefreshToken))],
 ) -> JSONResponse:
-    """Logout the user by deleting the refresh token and blacklisting it in Redis.
+    """Logout the user by deleting the refresh token.
 
     Args:
         request (Request): The FastAPI request object.
+        access_token (AccessToken | None): The access token from the request cookies.
         refresh_token (RefreshToken | None): The refresh token from the request cookies.
-        redis (Redis): The Redis client.
 
     Raises:
-        HTTPException:
-            - 400: If the refresh token is not found.
-            - 500: If there is an internal server error while deleting or blacklisting the refresh token.
+        HTTPException: (503) If there is a DB issue.
 
     Returns:
         JSONResponse: A response indicating that the user has been logged out, with cookies deleted.
 
     """
-    if not refresh_token:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=gettext("Refresh token not found."),
-        )
+    try:
+        # NOTE: Logging out is based around deleting persistent refresh tokens from the database.
+        # This value is stored at 2 places, in the refresh token itself and in the access token as a claim.
+        refresh_token_jti = None
 
-    # Delete the refresh token from the database
-    if not await delete_refresh_token(token=refresh_token):
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=gettext("Internal server error."),
-        )
+        # Get JTI from refresh token itself if available
+        if isinstance(refresh_token, RefreshToken):
+            refresh_token_jti = refresh_token.token_id
 
-    # Blacklist the refresh token in Redis to prevent its reuse
-    if not await blacklist_refresh_token(token=refresh_token, redis=redis):
+        # Get JTI from access token claim if available as a fallback
+        if not refresh_token_jti and isinstance(access_token, AccessToken):
+            refresh_token_jti = access_token.extra_claims.get("rt_jti")
+            refresh_token_jti = UUID(refresh_token_jti) if refresh_token_jti else None
+
+        # Should not happen, but just in case, if both are missing, all live refresh tokens for the user are deleted.
+        # NOTE: As this is "must be logged in" endpoint, request.user.uuid is guaranteed to be present.
+        if refresh_token_jti is None:
+            LOGGER.warning(
+                "Refresh token JTI not found for user %s, performing full logout",
+                request.user.uuid,
+            )
+            await delete_all_refresh_tokens(user_id=request.user.uuid)
+
+        else:
+            result = await delete_refresh_token(
+                token_id=refresh_token_jti,
+                user_id=request.user.uuid,
+            )
+
+            if result is None:
+                # NOTE: Suspicious scenario, but not impossible. If the refresh token is valid, but not found in the DB.
+                # Bad migration, manual DB deletion, or some other unexpected scenario.
+                # Just in case, full logout like above is performed.
+                LOGGER.warning(
+                    "Persistent refresh token not found for user %s, performing full logout", request.user.uuid
+                )
+
+                await delete_all_refresh_tokens(user_id=request.user.uuid)
+
+    except (PostgresError, InterfaceError, OSError, TimeoutError) as e:
+        LOGGER.warning("Database error while deleting refresh token for user %s", request.user.uuid)
+
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=gettext("Internal server error."),
-        )
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=gettext("Logout service is temporarily unavailable. Please try again later."),
+        ) from e
 
     response = JSONResponse(content={"message": "User logged out successfully."})
 
+    # NOTE: Whole endpoint does not raise a HTTPException -> cookies are destroyed
+    # regardless of the outcome of the refresh token deletion.
     response.delete_cookie(**ACCESS_TOKEN_COOKIE_KWARGS)
     response.delete_cookie(**REFRESH_TOKEN_COOKIE_KWARGS)
 

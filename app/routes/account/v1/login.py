@@ -176,8 +176,10 @@ async def login(
         roles = ",".join(user_account.granted_roles)
 
         # Generate access and refresh tokens for the authenticated user.
-        access_token = AccessToken.generate_token(subject=user_id, alias=alias, roles=roles)
         refresh_token = RefreshToken.generate_token(subject=user_id)
+        access_token = AccessToken.generate_token(
+            subject=user_id, alias=alias, roles=roles, rt_jti=str(refresh_token.token_id)
+        )
 
         # Store the refresh token in the database to allow for future validation and revocation.
         if not await add_refresh_token(token=refresh_token):

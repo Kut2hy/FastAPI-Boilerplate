@@ -17,8 +17,6 @@ from app.core.jwt.credentials import FrozenAuthCredentials
 from app.core.jwt.exceptions import MissingJWTClaimsError
 from app.core.jwt.refresh_token import REFRESH_TOKEN_COOKIE_KWARGS, RefreshToken
 from app.core.jwt.users import AuthenticatedUser, UnauthenticatedUser
-from app.core.redis.dependencies import IN_STATE_NAME
-from app.core.redis.functions import is_refresh_token_blacklisted
 from app.i18n.context_translations import gettext
 from app.piccolo.tables.refresh_token import regenerate_access_token
 
@@ -82,23 +80,14 @@ class JWTMiddleware:
 
         try:
             access_token = self.validate_token(access_token_cookie_str, AccessToken)
-            refresh_token = self.validate_token(refresh_token_cookie_str, RefreshToken)
-
-            # Validation of Redis blacklist. Key/attribute name is driven by RedisSettings,
-            # not hardcoded — the client is stored on app.state under IN_STATE_NAME at startup.
-            is_blacklisted = (
-                await is_refresh_token_blacklisted(refresh_token, getattr(connection.app.state, IN_STATE_NAME))
-                if isinstance(refresh_token, RefreshToken)
-                else False
-            )
-
-            if isinstance(access_token, AccessToken) and isinstance(refresh_token, RefreshToken) and not is_blacklisted:
+            if isinstance(access_token, AccessToken):
                 self.set_auth_context(scope, access_token)
 
                 await self.app(scope, receive, send)
                 return
 
-            if isinstance(refresh_token, RefreshToken) and not is_blacklisted:
+            refresh_token = self.validate_token(refresh_token_cookie_str, RefreshToken)
+            if isinstance(refresh_token, RefreshToken):
                 # ==================================================================================================
                 # Authenticated access with token regeneration using valid refresh token
                 # ==================================================================================================
@@ -120,9 +109,6 @@ class JWTMiddleware:
                 delete_cookies = True
 
         except PostgresError, InterfaceError, OSError, TimeoutError:
-            # Expected infrastructure failure: the token store is unreachable. Answer with a
-            # deliberate 503 and keep the client's cookies intact — a transient outage must not
-            # destroy otherwise-valid sessions.
             ERROR_LOGGER.exception("Database error while processing JWT authentication.")
             await self.on_error_response(
                 scope,
@@ -134,9 +120,8 @@ class JWTMiddleware:
             return
 
         except Exception:
-            # Unexpected bug in this middleware: log with traceback, then let the app-level
-            # catch-all handler (ServerErrorMiddleware / @app.exception_handler(Exception)) own
-            # the response so UX stays consistent and uvicorn can log the error.
+            # Log with traceback, then let the app-level catch-all handler
+            # (ServerErrorMiddleware / @app.exception_handler(Exception)) create response
             ERROR_LOGGER.exception("Unexpected error while processing JWT authentication.")
             raise
 

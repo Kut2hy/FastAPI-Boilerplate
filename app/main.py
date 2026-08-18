@@ -1,25 +1,19 @@
 """FastAPI application entry point."""
 
-from datetime import datetime, timezone
 from typing import Annotated
-from uuid import UUID
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.responses import JSONResponse
 from redis.asyncio import Redis
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.app_config import APP_SETTINGS
 from app.common.exceptions import http_exception_handler, unhandled_exception_handler
 from app.common.middleware.localization import LocalizationMiddleware
-from app.core.jwt.access_token import ACCESS_TOKEN_COOKIE_KWARGS, AccessToken
 from app.core.jwt.middleware import JWTMiddleware
-from app.core.jwt.refresh_token import REFRESH_TOKEN_COOKIE_KWARGS, RefreshToken
 from app.core.redis.dependencies import get_redis_client
 from app.life_cycle import life_cycle
-from app.piccolo.tables.refresh_token import add_refresh_token
 from app.routes.account.v1.login import router as login_router
 from app.routes.account.v1.logout import router as logout_router
 

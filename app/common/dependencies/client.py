@@ -3,41 +3,12 @@
 from typing import TYPE_CHECKING
 
 from fastapi import HTTPException, Request, status
-from jwt import InvalidTokenError
 
-from app.core.jwt.refresh_token import RefreshToken
 from app.core.jwt.users import AuthenticatedUser, UnauthenticatedUser
 from app.i18n.context_translations import gettext
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-
-
-def get_refresh_token(request: Request) -> RefreshToken | None:
-    """Get the refresh token from the request cookies.
-
-    Args:
-        request (Request): The FastAPI request object.
-
-    Returns:
-        RefreshToken | None: The refresh token from the request cookies, or None if not present.
-
-    """
-    refresh_token_cookie = request.cookies.get("refresh_token")
-
-    if refresh_token_cookie is None:
-        return None
-
-    try:
-        # Validate the refresh token with a leeway of 2 seconds more than the acceptable leeway.
-        # Extra leeway is to bridge processing time between middleware validation and this function call.
-        return RefreshToken.from_string(refresh_token_cookie, leeway=(RefreshToken.acceptable_leeway + 2))
-
-    except InvalidTokenError as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=gettext("Invalid refresh token."),
-        ) from e
 
 
 def get_user(request: Request) -> AuthenticatedUser | UnauthenticatedUser:
