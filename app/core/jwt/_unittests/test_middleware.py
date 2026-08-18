@@ -1,18 +1,22 @@
 """Unit tests for JWTMiddleware."""
 
-
+import os
 from http.cookies import SimpleCookie
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any
 from uuid import UUID, uuid7
 
 import jwt as pyjwt
 import pytest
+import pytest_asyncio
 from asyncpg import InterfaceError
+from redis.asyncio import Redis
 
 from app.core.jwt import access_token as at_module
 from app.core.jwt import middleware as mw_module
 from app.core.jwt import refresh_token as rt_module
 from app.core.jwt.exceptions import MissingJWTClaimsError
+from app.core.redis.dependencies import IN_STATE_NAME
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -27,8 +31,12 @@ _TEST_ISSUER = "test_issuer"
 # ======================================================================================================================
 # Helpers
 # ======================================================================================================================
-def _http_scope(cookies: dict[str, str] | None = None) -> dict[str, Any]:
-    """Build a minimal ASGI HTTP scope with the given cookies."""
+def _http_scope(cookies: dict[str, str] | None = None, app: Any = None) -> dict[str, Any]:
+    """Build a minimal ASGI HTTP scope with the given cookies and FastAPI app.
+
+    The middleware reaches the Redis client via ``connection.app.state``; without ``app``
+    in the scope that access raises KeyError, so every cookie-carrying request needs it.
+    """
     headers: list[tuple[bytes, bytes]] = [(b"host", _TEST_HOST.encode())]
 
     if cookies:
@@ -41,6 +49,7 @@ def _http_scope(cookies: dict[str, str] | None = None) -> dict[str, Any]:
         "path": "/",
         "headers": headers,
         "query_string": b"",
+        "app": app,
     }
 
 
@@ -60,9 +69,44 @@ def _make_access_token(user_id: UUID | None = None, **extra_claims: str) -> at_m
     return at_module.AccessToken.generate_token(subject=user_id or uuid7(), **claims)
 
 
+def _make_refresh_token(user_id: UUID | None = None) -> rt_module.RefreshToken:
+    """Generate a deterministic refresh token for tests."""
+    return rt_module.RefreshToken.generate_token(subject=user_id or uuid7())
+
+
 # ======================================================================================================================
 # Fixtures
 # ======================================================================================================================
+@pytest_asyncio.fixture
+async def redis_client():  # noqa: ANN202
+    """Create a Redis client for testing (DB 15, same pattern as the redis functions tests)."""
+    client = Redis(
+        host=os.getenv("REDIS_HOST", "localhost"),
+        port=int(os.getenv("REDIS_PORT", "6379")),
+        db=15,
+        decode_responses=True,
+    )
+
+    await client.ping()
+
+    yield client
+
+    await client.flushdb()
+    await client.aclose()
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def _clean_redis(redis_client: Redis) -> None:
+    """Clean Redis before each test."""
+    await redis_client.flushdb()
+
+
+@pytest.fixture
+def fake_app(redis_client: Redis) -> SimpleNamespace:
+    """Stand-in for the FastAPI app object, exposing the Redis client under IN_STATE_NAME."""
+    return SimpleNamespace(state=SimpleNamespace(**{IN_STATE_NAME: redis_client}))
+
+
 @pytest.fixture(autouse=True)
 def _configure_tokens(monkeypatch: pytest.MonkeyPatch) -> None:
     """Patch token classes and cookie kwargs to deterministic test values."""
@@ -176,13 +220,18 @@ async def test_guest_without_cookies_passes_through_as_unauthenticated(stub_app:
 
 
 @pytest.mark.asyncio
-async def test_valid_access_token_authenticates_request(stub_app: Callable) -> None:
-    """A valid access token populates scope user/auth and passes through unchanged."""
+async def test_valid_access_token_authenticates_request(stub_app: Callable, fake_app: Any) -> None:
+    """Valid access + valid refresh populates scope user/auth and passes through unchanged."""
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
 
-    token = _make_access_token()
-    messages = await _run(middleware, _http_scope({"access_token": str(token)}))
+    user_id = uuid7()
+    token = _make_access_token(user_id)
+    refresh = _make_refresh_token(user_id)
+    messages = await _run(
+        middleware,
+        _http_scope({"access_token": str(token), "refresh_token": str(refresh)}, app=fake_app),
+    )
 
     assert state["calls"] == 1
     assert state["scope"]["user"].is_authenticated
@@ -194,13 +243,18 @@ async def test_valid_access_token_authenticates_request(stub_app: Callable) -> N
 
 
 @pytest.mark.asyncio
-async def test_access_token_with_empty_roles_gets_empty_scopes(stub_app: Callable) -> None:
+async def test_access_token_with_empty_roles_gets_empty_scopes(stub_app: Callable, fake_app: Any) -> None:
     """An empty roles claim yields an empty scope set, not an error."""
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
 
-    token = _make_access_token(roles="")
-    await _run(middleware, _http_scope({"access_token": str(token)}))
+    user_id = uuid7()
+    token = _make_access_token(user_id, roles="")
+    refresh = _make_refresh_token(user_id)
+    await _run(
+        middleware,
+        _http_scope({"access_token": str(token), "refresh_token": str(refresh)}, app=fake_app),
+    )
 
     assert state["calls"] == 1
     assert state["scope"]["user"].is_authenticated
@@ -214,13 +268,13 @@ async def test_access_token_with_empty_roles_gets_empty_scopes(stub_app: Callabl
 
 @pytest.mark.asyncio
 async def test_expired_access_token_regenerates_via_refresh(
-    stub_app: Callable, monkeypatch: pytest.MonkeyPatch
+    stub_app: Callable, monkeypatch: pytest.MonkeyPatch, fake_app: Any
 ) -> None:
     """Invalid access + valid refresh → new access token cookie and authenticated request."""
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
 
-    refresh = rt_module.RefreshToken.generate_token(subject=uuid7())
+    refresh = _make_refresh_token()
     new_access = _make_access_token()
 
     async def fake_regenerate(token: rt_module.RefreshToken) -> at_module.AccessToken | None:
@@ -231,7 +285,7 @@ async def test_expired_access_token_regenerates_via_refresh(
 
     messages = await _run(
         middleware,
-        _http_scope({"access_token": "garbage.token.value", "refresh_token": str(refresh)}),
+        _http_scope({"access_token": "garbage.token.value", "refresh_token": str(refresh)}, app=fake_app),
     )
 
     assert state["calls"] == 1
@@ -246,12 +300,14 @@ async def test_expired_access_token_regenerates_via_refresh(
 
 
 @pytest.mark.asyncio
-async def test_revoked_refresh_token_deletes_cookies(stub_app: Callable, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_revoked_refresh_token_deletes_cookies(
+    stub_app: Callable, monkeypatch: pytest.MonkeyPatch, fake_app: Any
+) -> None:
     """Valid refresh that the DB rejects → request proceeds unauthenticated, cookies cleared."""
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
 
-    refresh = rt_module.RefreshToken.generate_token(subject=uuid7())
+    refresh = _make_refresh_token()
 
     async def fake_regenerate(token: rt_module.RefreshToken) -> at_module.AccessToken | None:
         return None  # revoked / expired / unknown
@@ -260,7 +316,7 @@ async def test_revoked_refresh_token_deletes_cookies(stub_app: Callable, monkeyp
 
     messages = await _run(
         middleware,
-        _http_scope({"access_token": "garbage.token.value", "refresh_token": str(refresh)}),
+        _http_scope({"access_token": "garbage.token.value", "refresh_token": str(refresh)}, app=fake_app),
     )
 
     assert state["calls"] == 1
@@ -273,14 +329,14 @@ async def test_revoked_refresh_token_deletes_cookies(stub_app: Callable, monkeyp
 
 
 @pytest.mark.asyncio
-async def test_invalid_refresh_token_deletes_cookies(stub_app: Callable) -> None:
+async def test_invalid_refresh_token_deletes_cookies(stub_app: Callable, fake_app: Any) -> None:
     """A refresh token failing signature validation also lands on the delete-cookie path."""
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
 
     messages = await _run(
         middleware,
-        _http_scope({"access_token": "bad", "refresh_token": "also.bad"}),
+        _http_scope({"access_token": "bad", "refresh_token": "also.bad"}, app=fake_app),
     )
 
     assert state["calls"] == 1
@@ -291,12 +347,12 @@ async def test_invalid_refresh_token_deletes_cookies(stub_app: Callable) -> None
 
 
 @pytest.mark.asyncio
-async def test_only_access_cookie_present_but_invalid(stub_app: Callable) -> None:
+async def test_only_access_cookie_present_but_invalid(stub_app: Callable, fake_app: Any) -> None:
     """Access cookie alone, invalid → unauthenticated path with cookie cleanup."""
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
 
-    messages = await _run(middleware, _http_scope({"access_token": "nope"}))
+    messages = await _run(middleware, _http_scope({"access_token": "nope"}, app=fake_app))
 
     assert state["calls"] == 1
     assert not state["scope"]["user"].is_authenticated
@@ -312,15 +368,14 @@ async def test_only_access_cookie_present_but_invalid(stub_app: Callable) -> Non
 
 @pytest.mark.asyncio
 async def test_database_error_returns_503_and_preserves_cookies(
-    stub_app: Callable, monkeypatch: pytest.MonkeyPatch
+    stub_app: Callable, monkeypatch: pytest.MonkeyPatch, fake_app: Any
 ) -> None:
     """A DB outage must produce a 503 and must NOT delete the client's session cookies."""
-
 
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
 
-    refresh = rt_module.RefreshToken.generate_token(subject=uuid7())
+    refresh = _make_refresh_token()
 
     async def fake_regenerate(token: rt_module.RefreshToken) -> at_module.AccessToken | None:
         raise InterfaceError("connection closed")
@@ -329,7 +384,7 @@ async def test_database_error_returns_503_and_preserves_cookies(
 
     messages = await _run(
         middleware,
-        _http_scope({"access_token": "bad", "refresh_token": str(refresh)}),
+        _http_scope({"access_token": "bad", "refresh_token": str(refresh)}, app=fake_app),
     )
 
     # The downstream app must NOT be invoked.
@@ -343,7 +398,9 @@ async def test_database_error_returns_503_and_preserves_cookies(
 
 
 @pytest.mark.asyncio
-async def test_unexpected_middleware_error_propagates(stub_app: Callable, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_unexpected_middleware_error_propagates(
+    stub_app: Callable, monkeypatch: pytest.MonkeyPatch, fake_app: Any
+) -> None:
     """Unexpected bugs inside the middleware must propagate (to ServerErrorMiddleware)."""
     app, _ = stub_app()
     middleware = mw_module.JWTMiddleware(app)
@@ -353,25 +410,63 @@ async def test_unexpected_middleware_error_propagates(stub_app: Callable, monkey
 
     monkeypatch.setattr(mw_module, "regenerate_access_token", fake_regenerate)
 
-    refresh = rt_module.RefreshToken.generate_token(subject=uuid7())
+    refresh = _make_refresh_token()
 
     with pytest.raises(AssertionError, match="totally unexpected"):
         await _run(
             middleware,
-            _http_scope({"access_token": "bad", "refresh_token": str(refresh)}),
+            _http_scope({"access_token": "bad", "refresh_token": str(refresh)}, app=fake_app),
         )
 
 
 @pytest.mark.asyncio
-async def test_endpoint_exception_propagates_untouched(stub_app: Callable) -> None:
+async def test_endpoint_exception_propagates_untouched(stub_app: Callable, fake_app: Any) -> None:
     """Endpoint exceptions must bubble up — the middleware must not swallow them."""
     app, _ = stub_app(behavior="raise")
     middleware = mw_module.JWTMiddleware(app)
 
-    token = _make_access_token()
+    user_id = uuid7()
+    token = _make_access_token(user_id)
+    refresh = _make_refresh_token(user_id)
 
     with pytest.raises(RuntimeError, match="endpoint exploded"):
-        await _run(middleware, _http_scope({"access_token": str(token)}))
+        await _run(
+            middleware,
+            _http_scope({"access_token": str(token), "refresh_token": str(refresh)}, app=fake_app),
+        )
+
+
+@pytest.mark.asyncio
+async def test_valid_access_token_without_refresh_deletes_cookies(stub_app: Callable, fake_app: Any) -> None:
+    """Valid access token but missing refresh → unauthenticated, both cookies wiped."""
+    app, state = stub_app()
+    middleware = mw_module.JWTMiddleware(app)
+
+    messages = await _run(middleware, _http_scope({"access_token": str(_make_access_token())}, app=fake_app))
+
+    assert state["calls"] == 1
+    assert not state["scope"]["user"].is_authenticated
+    cookies = _response_cookies(messages)
+    assert cookies["access_token"].value == ""
+    assert cookies["refresh_token"].value == ""
+
+
+@pytest.mark.asyncio
+async def test_valid_access_token_with_invalid_refresh_deletes_cookies(stub_app: Callable, fake_app: Any) -> None:
+    """Valid access token but garbage refresh → unauthenticated, both cookies wiped."""
+    app, state = stub_app()
+    middleware = mw_module.JWTMiddleware(app)
+
+    messages = await _run(
+        middleware,
+        _http_scope({"access_token": str(_make_access_token()), "refresh_token": "garbage"}, app=fake_app),
+    )
+
+    assert state["calls"] == 1
+    assert not state["scope"]["user"].is_authenticated
+    cookies = _response_cookies(messages)
+    assert cookies["access_token"].value == ""
+    assert cookies["refresh_token"].value == ""
 
 
 # ======================================================================================================================
@@ -380,9 +475,10 @@ async def test_endpoint_exception_propagates_untouched(stub_app: Callable) -> No
 
 
 @pytest.mark.asyncio
-async def test_access_token_missing_alias_claim_raises(stub_app: Callable, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_access_token_missing_alias_claim_raises(
+    stub_app: Callable, monkeypatch: pytest.MonkeyPatch, fake_app: Any
+) -> None:
     """A correctly-signed access token missing the required alias claim is a minting bug → 500."""
-
 
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
@@ -390,7 +486,7 @@ async def test_access_token_missing_alias_claim_raises(stub_app: Callable, monke
     user_id = uuid7()
     # Token signed correctly but deliberately missing the alias claim.
     bad_access = at_module.AccessToken.generate_token(subject=user_id, roles="role1")
-    refresh = rt_module.RefreshToken.generate_token(subject=user_id)
+    refresh = _make_refresh_token(user_id)
 
     regenerate_called = False
 
@@ -406,7 +502,7 @@ async def test_access_token_missing_alias_claim_raises(stub_app: Callable, monke
     with pytest.raises(MissingJWTClaimsError):
         await _run(
             middleware,
-            _http_scope({"access_token": str(bad_access), "refresh_token": str(refresh)}),
+            _http_scope({"access_token": str(bad_access), "refresh_token": str(refresh)}, app=fake_app),
         )
 
     assert state["calls"] == 0
@@ -414,9 +510,8 @@ async def test_access_token_missing_alias_claim_raises(stub_app: Callable, monke
 
 
 @pytest.mark.asyncio
-async def test_token_with_malformed_claims_raises(stub_app: Callable) -> None:
+async def test_token_with_malformed_claims_raises(stub_app: Callable, fake_app: Any) -> None:
     """A token whose claims fail structural validation is a minting bug → propagates as error."""
-
 
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
@@ -438,6 +533,6 @@ async def test_token_with_malformed_claims_raises(stub_app: Callable) -> None:
 
     # The ValueError from UUID parsing propagates (caught by `except Exception` then re-raised).
     with pytest.raises(ValueError):  # noqa: PT011
-        await _run(middleware, _http_scope({"access_token": forged}))
+        await _run(middleware, _http_scope({"access_token": forged}, app=fake_app))
 
     assert state["calls"] == 0

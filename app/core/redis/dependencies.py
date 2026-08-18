@@ -4,13 +4,15 @@ from typing import TYPE_CHECKING
 
 # NOTE: Request must be imported here, as in type checking block Depends will not work properly with it.
 from fastapi import Request  # noqa: TC002
+from redis.asyncio import Redis as _Redis
 
 from app.core.redis.config import REDIS_SETTINGS
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from redis.asyncio import Redis
+# Convenience alias for the Redis client type.
+Redis = _Redis
 
 IN_STATE_NAME: str = REDIS_SETTINGS.in_state_name
 """The name of the state variable in the FastAPI app where the Redis client will be stored."""

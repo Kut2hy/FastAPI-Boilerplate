@@ -13,7 +13,7 @@ class AuthenticatedUser(BaseUser):
     """Custom user class that extends Starlette's BaseUser."""
 
     def __init__(self, username: str, uuid: UUID) -> None:
-        """Initialize the BaseUser with a username and a UUID.
+        """Initialize the AuthenticatedUser with a username and a UUID.
 
         Args:
             username (str): The username of the user aka email address.

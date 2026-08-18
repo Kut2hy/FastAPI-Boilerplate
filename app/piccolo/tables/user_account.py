@@ -1,5 +1,7 @@
 """Definitions of the Account table and Pydantic DB facing models."""
 
+from uuid import UUID
+from typing import overload
 from piccolo.columns import (
     Array,
     Boolean,
@@ -99,3 +101,33 @@ class UserAccount(
 
     unique_email_user_alias = Unique(columns=["email", "user_alias"])
     """Unique constraint to ensure that the combination of email and user_alias is unique across all records."""
+
+
+@overload
+async def get_user(identifier: str) -> UserAccount | None: ...
+@overload
+async def get_user(identifier: UUID) -> UserAccount | None: ...
+
+
+async def get_user(identifier: str | UUID) -> UserAccount | None:
+    """Retrieve a user account by email or UUID.
+
+    Args:
+        identifier (str | UUID): The email or UUID of the user account.
+
+    Returns:
+        UserAccount | None: The user account if found, otherwise None.
+
+    """
+    user = UserAccount.objects()
+
+    if isinstance(identifier, str):
+        user = user.where(UserAccount.email == identifier)
+
+    elif isinstance(identifier, UUID):
+        user = user.where(UserAccount.id == identifier)
+
+    else:
+        raise TypeError("Identifier must be a string email or a UUID.")
+
+    return await user.first()

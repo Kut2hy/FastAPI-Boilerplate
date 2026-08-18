@@ -80,26 +80,19 @@ class JWTMiddleware:
 
         try:
             access_token = self.validate_token(access_token_cookie_str, AccessToken)
-
             if isinstance(access_token, AccessToken):
-                # ======================================================================================================
-                # Authenticated access with valid access token — nothing else to do.
-                # ======================================================================================================
                 self.set_auth_context(scope, access_token)
 
                 await self.app(scope, receive, send)
                 return
 
-            # The access token is missing or invalid. Fall back to the refresh token and try to
-            # mint a new access token.
             refresh_token = self.validate_token(refresh_token_cookie_str, RefreshToken)
-
             if isinstance(refresh_token, RefreshToken):
-                # ======================================================================================================
+                # ==================================================================================================
                 # Authenticated access with token regeneration using valid refresh token
-                # ======================================================================================================
-                # DB lookup ensures the refresh token was issued by this site, is not revoked, and
-                # has not expired. None means the token is no longer trusted.
+                # ==================================================================================================
+                # DB lookup ensures the refresh token was issued by this site, is not revoked,
+                # and has not expired. None means the token is no longer trusted.
                 regenerated_access_token = await regenerate_access_token(refresh_token)
 
                 if regenerated_access_token is not None:
@@ -110,15 +103,12 @@ class JWTMiddleware:
                     delete_cookies = True
 
             else:
-                # ======================================================================================================
+                # ==================================================================================================
                 # Unauthenticated access with invalid refresh token
-                # ======================================================================================================
+                # ==================================================================================================
                 delete_cookies = True
 
         except PostgresError, InterfaceError, OSError, TimeoutError:
-            # Expected infrastructure failure: the token store is unreachable. Answer with a
-            # deliberate 503 and keep the client's cookies intact — a transient outage must not
-            # destroy otherwise-valid sessions.
             ERROR_LOGGER.exception("Database error while processing JWT authentication.")
             await self.on_error_response(
                 scope,
@@ -130,9 +120,8 @@ class JWTMiddleware:
             return
 
         except Exception:
-            # Unexpected bug in this middleware: log with traceback, then let the app-level
-            # catch-all handler (ServerErrorMiddleware / @app.exception_handler(Exception)) own
-            # the response so UX stays consistent and uvicorn can log the error.
+            # Log with traceback, then let the app-level catch-all handler
+            # (ServerErrorMiddleware / @app.exception_handler(Exception)) create response
             ERROR_LOGGER.exception("Unexpected error while processing JWT authentication.")
             raise
 
@@ -199,7 +188,7 @@ class JWTMiddleware:
         return token
 
     @staticmethod
-    def set_auth_context(scope: Scope, token: AccessToken) -> None:
+    def set_auth_context(scope: Scope, access_token: AccessToken) -> None:
         """Populate the scope's user/auth from a valid access token's claims.
 
         A correctly-signed access token that is missing the required ``alias`` claim (or carries a
@@ -208,22 +197,22 @@ class JWTMiddleware:
 
         Args:
             scope (Scope): The ASGI scope to mutate.
-            token (AccessToken): The validated access token to read claims from.
+            access_token (AccessToken): The validated access token to read claims from.
 
         Raises:
             MissingJWTClaimsError: If the required ``alias`` claim is missing or empty.
 
         """
-        if "alias" not in token.extra_claims or not token.extra_claims["alias"]:
+        if "alias" not in access_token.extra_claims or not access_token.extra_claims["alias"]:
             raise MissingJWTClaimsError("Access token is missing the required 'alias' claim.")
 
-        if "roles" not in token.extra_claims:
+        if "roles" not in access_token.extra_claims:
             raise MissingJWTClaimsError("Access token is missing the required 'roles' claim.")
 
-        username = token.extra_claims["alias"]
-        roles = token.extra_claims["roles"]
+        username = access_token.extra_claims["alias"]
+        roles = access_token.extra_claims["roles"]
 
-        scope["user"] = AuthenticatedUser(username=username, uuid=token.subject)
+        scope["user"] = AuthenticatedUser(username=username, uuid=access_token.subject)
         scope["auth"] = FrozenAuthCredentials(scopes=roles.strip().split(",") if roles else [])
 
     @staticmethod

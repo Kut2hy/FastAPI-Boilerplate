@@ -25,8 +25,8 @@ class AccessTokenSettings(BaseSettings):
     algorithm: str = Field(default="HS512")
     """The algorithm used to sign the access token. Default is HS512."""
 
-    time_to_live: int = Field(default=60 * 10, ge=1)
-    """The time to live for the access token in seconds. Default is 600 seconds (10 minutes)."""
+    time_to_live: int = Field(default=60 * 5, ge=1)
+    """The time to live for the access token in seconds. Default is 300 seconds (5 minutes)."""
 
     acceptable_leeway: int = Field(default=5, ge=0)
     """The leeway for token expiration in seconds. Default is 5 seconds."""
@@ -76,7 +76,7 @@ class AccessToken(BaseToken):
     algorithm: str = ACCESS_TOKEN_SETTINGS.algorithm
     """The algorithm used to sign the access token."""
 
-    allowed_extra_claims: frozenset[str] = frozenset(("roles", "alias"))
+    allowed_extra_claims: frozenset[str] = frozenset(("roles", "alias", "rt_jti"))
     """A set of allowed extra claims that can be included in the access token."""
 
     _issuer: str = _ISSUER
