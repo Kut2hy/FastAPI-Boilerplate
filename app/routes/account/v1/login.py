@@ -49,9 +49,9 @@ async def add_login_attempt(email: str, ip: str, redis: Redis) -> bool:
     """Add a login attempt for the given email and IP in Redis.
 
     Args:
-        redis (Redis): The Redis client.
-        email (str): The email address to track login attempts for.
         ip (str): The IP address to track login attempts for.
+        email (str): The email address to track login attempts for.
+        redis (Redis): The Redis client.
 
     Returns:
         bool: True if the number of attempts is within the limit, False if the limit has been exceeded.
@@ -81,9 +81,9 @@ async def reset_login_attempts(email: str, ip: str, redis: Redis) -> None:
     """Reset the login attempts for the given email and IP in Redis.
 
     Args:
-        redis (Redis): The Redis client.
-        ip (str): The IP address to reset login attempts for.
         email (str): The email address to reset login attempts for.
+        ip (str): The IP address to reset login attempts for.
+        redis (Redis): The Redis client.
 
     """
     async with redis.pipeline(transaction=True) as connection:
@@ -106,7 +106,6 @@ async def login(
     """Login endpoint for user authentication.
 
     Args:
-        request (Request): The FastAPI request object.
         email (Email): The user's email address.
         password (RawPassword): The user's raw password.
         client_ip_addr (str): The client's IP address, obtained from the request.

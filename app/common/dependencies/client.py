@@ -20,6 +20,9 @@ def get_user(request: Request) -> AuthenticatedUser | UnauthenticatedUser:
     Returns:
         AuthenticatedUser | UnauthenticatedUser: The user object from the request.
 
+    Raises:
+        TypeError: If the user is not an instance of AuthenticatedUser or UnauthenticatedUser
+
     """
     user = request.user
 
@@ -40,6 +43,9 @@ def get_roles(request: Request) -> frozenset[str]:
 
     Returns:
         frozenset[str]: The roles of the user from the request.
+
+    Raises:
+        TypeError: If the roles are not a frozenset.
 
     """
     roles = request.auth.scopes if hasattr(request.auth, "scopes") else frozenset()

@@ -14,6 +14,16 @@ def str2uuid(value: str | _UUID | None) -> _UUID | None:
     """Pydantic validator to convert a string to a UUID.
 
     This is useful for form inputs where UUIDs are often represented as strings.
+
+    Args:
+        value (str | UUID | None): The value to convert to a UUID.
+
+    Returns:
+        UUID | None: The converted UUID or None if the input is None or a nullish string.
+
+    Raises:
+        ValueError: If the value is not a string, UUID, or None.
+
     """
 
     if value is None:
