@@ -10,6 +10,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.app_config import APP_SETTINGS
 from app.common.exceptions import http_exception_handler, unhandled_exception_handler
+from app.common.middleware.headers import HeaderMiddleware
 from app.common.middleware.localization import LocalizationMiddleware
 from app.core.jwt.middleware import JWTMiddleware
 from app.core.redis.dependencies import get_redis_client
@@ -51,6 +52,9 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 # Order of middleware execution:
 #   - Incoming request: last to first (outermost to innermost)
 #   - Outgoing response: first to last (innermost to outermost)
+
+app.add_middleware(HeaderMiddleware)
+
 app.add_middleware(JWTMiddleware)
 
 app.add_middleware(LocalizationMiddleware)
