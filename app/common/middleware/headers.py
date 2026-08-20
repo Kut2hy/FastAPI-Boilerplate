@@ -4,11 +4,14 @@ from secrets import token_urlsafe
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from app.app_config import APP_SETTINGS
 from app.common.header_encoding import to_header_name_fmt, to_header_value_fmt
 
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+DEV_MODE = APP_SETTINGS.in_development
+"""Flag indicating whether the application is running in development mode."""
 
 # ======================================================================================================================
 # Per request dynamic headers (nonce, request ID, CSP)
@@ -140,9 +143,14 @@ class HeaderMiddleware:
             await self.app(scope, receive, send)
             return
 
+        # In dev mode allow with Swagger UI pass through without security headers to avoid issues.
+        if DEV_MODE and scope["path"].startswith("/docs"):
+            await self.app(scope, receive, send)
+            return
+
         # Per-request values, computed once before the response starts.
         request_id = uuid4()
-        nonce = token_urlsafe(nbytes=32)
+        nonce = token_urlsafe(nbytes=16)
 
         # Stash the nonce/id where downstream code can read it (replaces request.state.*).
         state = scope.setdefault("state", {})

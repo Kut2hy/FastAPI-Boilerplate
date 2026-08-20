@@ -41,9 +41,21 @@ class AppSettings(BaseSettings):
 
     @computed_field
     @property
-    def app_root(self) -> str:
+    def project_root(self) -> Path:
+        """Root directory of the project."""
+        return Path(__file__).parent.parent.resolve()
+
+    @computed_field
+    @property
+    def app_root(self) -> Path:
         """Root directory of the application, not of the project."""
-        return str(Path(__file__).parent.resolve())
+        return Path(__file__).parent.resolve()
+
+    @computed_field
+    @property
+    def endpoints_root(self) -> Path:
+        """Root directory of the endpoints."""
+        return (Path(__file__).parent / "routes").resolve()
 
     @computed_field
     @property

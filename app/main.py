@@ -1,31 +1,27 @@
 """FastAPI application entry point."""
 
-from typing import Annotated
+from importlib import import_module
+from logging import getLogger
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from redis.asyncio import Redis
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.app_config import APP_SETTINGS
 from app.common.exceptions import http_exception_handler, unhandled_exception_handler
 from app.common.middleware.headers import HeaderMiddleware
 from app.common.middleware.localization import LocalizationMiddleware
+from app.common.middleware.server_timings import ServerTimingsMiddleware
 from app.core.jwt.middleware import JWTMiddleware
-from app.core.redis.dependencies import get_redis_client
 from app.life_cycle import life_cycle
-from app.routes.account.v1.login import router as login_router
-from app.routes.account.v1.logout import router as logout_router
 
-app = FastAPI(
-    title=APP_SETTINGS.title,
-    version=APP_SETTINGS.version,
-    lifespan=life_cycle,
-    openapi_url="/openapi.json" if APP_SETTINGS.in_development else None,
-    docs_url="/docs" if APP_SETTINGS.in_development else None,
-    redoc_url="/redoc" if APP_SETTINGS.in_development else None,
-)
+LOGGER = getLogger(__name__)
+"""Logger for the FastAPI application."""
+
+DEV_MODE = APP_SETTINGS.in_development
+"""Flag indicating whether the application is running in development mode."""
 
 ALLOWED_HOSTS = [str(APP_SETTINGS.host), f"{APP_SETTINGS.host}:{APP_SETTINGS.port}"]
 """Host header values accepted by the application."""
@@ -37,6 +33,17 @@ if APP_SETTINGS.public_host:
     ALLOWED_HOSTS.append(APP_SETTINGS.public_host)
     ALLOWED_ORIGINS.append(f"https://{APP_SETTINGS.public_host}")
 
+# ======================================================================================================================
+# FastAPI application instance
+# ======================================================================================================================
+app = FastAPI(
+    title=APP_SETTINGS.title,
+    version=APP_SETTINGS.version,
+    lifespan=life_cycle,
+    openapi_url="/openapi.json" if DEV_MODE else None,
+    docs_url="/docs" if DEV_MODE else None,
+    redoc_url="/redoc" if DEV_MODE else None,
+)
 
 # ======================================================================================================================
 # Exception handlers
@@ -55,9 +62,13 @@ app.add_exception_handler(StarletteHTTPException, http_exception_handler)
 
 app.add_middleware(HeaderMiddleware)
 
+app.add_middleware(ServerTimingsMiddleware)
+
 app.add_middleware(JWTMiddleware)
 
 app.add_middleware(LocalizationMiddleware)
+
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 app.add_middleware(
     CORSMiddleware,
@@ -67,47 +78,26 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.add_middleware(
-    TrustedHostMiddleware,
-    allowed_hosts=ALLOWED_HOSTS,
-)
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
 
+# ======================================================================================================================
+# Add routers for different API endpoints
+# ======================================================================================================================
+LOGGER.info("==== Registering Endpoints ".ljust(80, "="))
 
-app.include_router(login_router)
-app.include_router(logout_router)
+for endpoint_file in APP_SETTINGS.endpoints_root.rglob("*.py"):
+    module_name_parts = endpoint_file.relative_to(APP_SETTINGS.project_root).with_suffix("").parts
 
+    # Skip any modules that are meant to be private (start with an underscore).
+    if any(part.startswith("_") for part in module_name_parts):
+        continue
 
-@app.get("/health-check/app")
-async def health_check():
-    return {"status": "ok"}
+    module = import_module(".".join(module_name_parts))
+    for name, obj in module.__dict__.items():
+        # Check if the object is an instance of APIRouter and include it in the FastAPI application.
+        if isinstance(obj, APIRouter):
+            LOGGER.info("Adding APIRouter('%s') from module - %s", name, module.__name__)
+            app.include_router(obj)
+            break  # There is only one router per module, so we can stop after finding the first one.
 
-
-@app.get("/")
-async def root(request: Request):
-    return {"message": "Welcome to the FastAPI application!"}
-
-
-@app.get("/health-check/pg")
-async def health_check_pg():
-    from piccolo.engine import engine_finder  # noqa: PLC0415
-    from piccolo.engine.postgres import PostgresEngine  # noqa: PLC0415, TC002
-
-    engine: PostgresEngine = engine_finder()  # type: ignore -> Only PG engine is used in this project
-
-    result = await engine.run_ddl("SELECT 1;")
-
-    return {"status": "ok" if result == [(1,)] else "error"}
-
-
-@app.get("/health-check/redis")
-async def health_check_redis(
-    redis_client: Annotated[Redis, Depends(get_redis_client())],
-):
-    try:
-        pong = await redis_client.ping()
-
-    except Exception as e:
-        return {"status": "error", "message": str(e)}
-
-    else:
-        return {"status": "ok" if pong else "error"}
+LOGGER.info("=".ljust(80, "="))
