@@ -8,9 +8,9 @@ from asyncpg import InterfaceError, PostgresError
 from fastapi import status
 from fastapi.responses import JSONResponse
 from jwt import InvalidTokenError
-from starlette.datastructures import MutableHeaders
 from starlette.requests import HTTPConnection
 
+from app.common.header_encoding import to_header_name_fmt, to_header_value_fmt
 from app.common.middleware.asgi_cookies import delete_cookie, set_cookie
 from app.core.jwt.access_token import ACCESS_TOKEN_COOKIE_KWARGS, AccessToken
 from app.core.jwt.credentials import FrozenAuthCredentials
@@ -23,6 +23,8 @@ from app.piccolo.tables.refresh_token import regenerate_access_token
 if TYPE_CHECKING:
     from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
+SET_COOKIE_HEADER = to_header_name_fmt("set-cookie")
+"""Pre-encoded header name for 'Set-Cookie' to avoid repeated encoding in the middleware."""
 
 ERROR_LOGGER = getLogger("uvicorn.error")
 
@@ -234,10 +236,12 @@ class JWTMiddleware:
 
         async def _wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
-                headers = MutableHeaders(scope=message)
-
-                headers.append("set-cookie", delete_cookie(**REFRESH_TOKEN_COOKIE_KWARGS))
-                headers.append("set-cookie", delete_cookie(**ACCESS_TOKEN_COOKIE_KWARGS))
+                message["headers"].extend(
+                    (
+                        (SET_COOKIE_HEADER, to_header_value_fmt(delete_cookie(**REFRESH_TOKEN_COOKIE_KWARGS))),
+                        (SET_COOKIE_HEADER, to_header_value_fmt(delete_cookie(**ACCESS_TOKEN_COOKIE_KWARGS))),
+                    )
+                )
 
             await send(message)
 
@@ -264,14 +268,18 @@ class JWTMiddleware:
 
         async def _wrapper(message: Message) -> None:
             if message["type"] == "http.response.start":
-                headers = MutableHeaders(scope=message)
-
-                headers.append(
-                    "set-cookie",
-                    set_cookie(
-                        **ACCESS_TOKEN_COOKIE_KWARGS,
-                        value=str(access_token),
-                        expires=datetime.fromtimestamp(access_token.expiration, tz=timezone.utc),
+                message["headers"].extend(
+                    (
+                        (
+                            SET_COOKIE_HEADER,
+                            to_header_value_fmt(
+                                set_cookie(
+                                    **ACCESS_TOKEN_COOKIE_KWARGS,
+                                    value=str(access_token),
+                                    expires=datetime.fromtimestamp(access_token.expiration, tz=timezone.utc),
+                                )
+                            ),
+                        ),
                     ),
                 )
 
