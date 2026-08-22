@@ -18,13 +18,16 @@ from app.core.jwt.access_token import ACCESS_TOKEN_COOKIE_KWARGS, AccessToken
 from app.core.jwt.refresh_token import REFRESH_TOKEN_COOKIE_KWARGS, RefreshToken
 from app.core.password import hash_password, verify_password
 from app.core.redis.dependencies import Redis, get_redis_client
+from app.core.smtp.mailer import Mailer
 from app.i18n.context_translations import gettext
 from app.piccolo.tables.login_attempt import add_login_attempt as add_login_audit_trace
 from app.piccolo.tables.refresh_token import add_refresh_token
 from app.piccolo.tables.user_account import get_user
 
+BASE_FS_PATH = "/account/v1"
+
 router = APIRouter(
-    prefix="/account/v1",
+    prefix=BASE_FS_PATH.replace("-", "_"),
     tags=["account", "login"],
     dependencies=[Depends(enforce_not_logged_in())],
 )
@@ -43,6 +46,12 @@ ATTEMPT_IP_KEY_TEMPLATE = "login_attempts:ip:%(ip)s"
 
 DUMMY_PASSWORD_HASH = hash_password("dummy-password-for-timing")
 """Dummy password hash used to mitigate timing attacks when the user does not exist."""
+
+LOGIN_NOTIFICATION_SENDER = Mailer(
+    subject_template="{{ _('Successful Login Notification') }}",
+    body_template=f"{BASE_FS_PATH}/email_templates/login_notification.jinja.html",
+    private_email=True,
+)
 
 
 async def add_login_attempt(email: str, ip: str, redis: Redis) -> bool:
@@ -226,6 +235,15 @@ async def login(
         expires=datetime.fromtimestamp(refresh_token.expiration, tz=timezone.utc),
     )
 
-    # TODO: Add Email notification for successful login, including IP address and timestamp.
+    background_tasks.add_task(
+        LOGIN_NOTIFICATION_SENDER.send_email,
+        send_to={
+            user_account.email,
+        },
+        render_context={
+            "name": user_account.user_alias,
+            "ip_address": client_ip_addr,
+        },
+    )
 
     return response

@@ -9,35 +9,55 @@ from typing import TYPE_CHECKING
 
 from aiofiles import open as aio_open
 from aiosmtplib import SMTP, SMTPException
-from config import SMTP_SETTINGS
-from jinja2 import Template
+from jinja2 import Environment, FileSystemLoader
+from jinja2.ext import i18n
+
+from app.app_config import APP_SETTINGS
+from app.core.smtp.config import SMTP_SETTINGS
+from app.i18n.context_translations import ContextVarTranslations
 
 if TYPE_CHECKING:
     from pathlib import Path
 
 LOGGER = getLogger(__name__)
-"""Logger for the EmailSender module."""
+"""Logger for the Mailer module."""
+
+JINJA_ENV = Environment(
+    loader=FileSystemLoader(APP_SETTINGS.endpoints_root),
+    cache_size=0,  # Disable caching as all templates are loaded in __init__ of Mailer class
+    autoescape=True,
+    auto_reload=APP_SETTINGS.in_development,
+)
+"""Secondary Jinja2 Environment for rendering email templates."""
+
+JINJA_ENV.add_extension(i18n)
+JINJA_ENV.install_gettext_translations(  # type: ignore
+    ContextVarTranslations,
+    newstyle=True,
+)
 
 
-class EmailSender:
+class Mailer:
     """Class for sending emails using SMTP."""
+
+    route_root: Path = APP_SETTINGS.endpoints_root
 
     def __init__(
         self,
-        subject_template: Template,
-        body_template: Template,
+        subject_template: str,
+        body_template: str,
         private_email: bool = False,
     ) -> None:
-        """Initialize the EmailSender.
+        """Initialize the Mailer.
 
         Args:
-            subject_template (Template): A Jinja2 template for the email subject.
-            body_template (Template): A Jinja2 template for the email body.
+            subject_template (str): A Jinja2 template for the email subject.
+            body_template (str): A Jinja2 template for the email body.
             private_email (bool): Whether the email will be CCed to the sender (default: False).
 
         """
-        self.subject_template = subject_template
-        self.body_template = body_template
+        self.subject_template = JINJA_ENV.from_string(subject_template)
+        self.body_template = JINJA_ENV.get_template((self.route_root / body_template).as_posix())
         self.private_email = private_email
 
     async def send_email(
@@ -92,23 +112,3 @@ class EmailSender:
 
         except SMTPException:
             LOGGER.exception("Failed to send email to %s.", ", ".join(send_to))
-
-
-if __name__ == "__main__":
-    import asyncio
-
-    from jinja2 import Template
-
-    SENDER = EmailSender(
-        subject_template=Template("Test Email"),
-        body_template=Template("<h1>Hello, {{ name }}!</h1>"),
-        private_email=True
-    )
-
-    async def _main() -> None:
-        await SENDER.send_email(
-            send_to={"vojtakuthan@seznam.cz"},
-            render_context={"name": "Vojta"},
-        )
-
-    asyncio.run(_main())
