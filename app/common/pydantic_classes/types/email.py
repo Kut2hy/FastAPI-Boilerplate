@@ -5,7 +5,7 @@ from typing import Annotated
 
 from pydantic import BeforeValidator, Field, Secret
 
-from app.common.pydantic_classes.types.config import STANDARD_VARCHAR_LENGTH, NULLISH_STRINGS
+from app.common.pydantic_classes.types.config import NULLISH_STRINGS, STANDARD_VARCHAR_LENGTH
 from app.common.regexp import EMAIL_REGEXP
 
 _EMAIL_REGEXP = re_compile(EMAIL_REGEXP)
