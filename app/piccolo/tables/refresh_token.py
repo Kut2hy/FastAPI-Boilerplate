@@ -14,10 +14,9 @@ from piccolo.columns.reference import LazyTableReference
 from piccolo.constraints import Check, Unique
 from piccolo.table import Table
 
-from app.piccolo.mixins import CreatedAtMixin, PKMixin
-from app.core.jwt.refresh_token import RefreshToken as JWTRefreshToken
 from app.core.jwt.access_token import AccessToken as JWTAccessToken
-from app.piccolo.tables.user_account import UserAccount
+from app.core.jwt.refresh_token import RefreshToken as JWTRefreshToken
+from app.piccolo.mixins import CreatedAtMixin, PKMixin
 
 
 class RefreshToken(CreatedAtMixin, PKMixin, Table):

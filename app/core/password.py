@@ -1,8 +1,8 @@
 """Password security functions for hashing and verification."""
 
+from logging import getLogger
 from random import choice
 from string import ascii_lowercase, digits
-from logging import getLogger
 
 from argon2 import PasswordHasher
 from argon2.exceptions import HashingError, InvalidHashError, VerificationError, VerifyMismatchError

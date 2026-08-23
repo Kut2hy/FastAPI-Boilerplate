@@ -1,7 +1,8 @@
 """Definitions of the Account table and Pydantic DB facing models."""
 
-from uuid import UUID
 from typing import overload
+from uuid import UUID
+
 from piccolo.columns import (
     Array,
     Boolean,

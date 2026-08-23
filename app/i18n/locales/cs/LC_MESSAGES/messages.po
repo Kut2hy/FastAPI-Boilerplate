@@ -1,0 +1,99 @@
+# Czech translations for PROJECT.
+# Copyright (C) 2026 ORGANIZATION
+# This file is distributed under the same license as the PROJECT project.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: PROJECT VERSION\n"
+"Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
+"POT-Creation-Date: 2026-08-22 23:30+0200\n"
+"PO-Revision-Date: 2026-08-22 23:30+0200\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language: cs\n"
+"Language-Team: cs <LL@li.org>\n"
+"Plural-Forms: nplurals=3; plural=((n==1) ? 0 : (n>=2 && n<=4) ? 1 : 2);\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Generated-By: Babel 2.18.0\n"
+
+#: app/common/exceptions.py:60 app/routes/account/v1/login.py:196
+msgid "Internal server error."
+msgstr "Interní chyba serveru."
+
+#: app/common/dependencies/client.py:73
+msgid "You are already logged in."
+msgstr "Již jste přihlášeni."
+
+#: app/common/dependencies/client.py:96
+msgid "You must be logged in to access this resource."
+msgstr "Pro přístup k tomuto zdroji musíte být přihlášeni."
+
+#: app/common/dependencies/client.py:102
+msgid "You do not have the required permissions to access this resource."
+msgstr "Nemáte potřebná oprávnění pro přístup k tomuto zdroji."
+
+#: app/core/jwt/middleware.py:120
+msgid "Service unavailable. Try again later."
+msgstr "Služba je nedostupná. Zkuste to znovu později."
+
+#: app/routes/account/v1/login.py:140
+#, python-format
+msgid "Too many login attempts. Please try again after %(duration)s minutes."
+msgstr "Příliš mnoho pokusů o přihlášení. Zkuste to znovu za %(duration)s minut."
+
+#: app/routes/account/v1/login.py:153 app/routes/account/v1/login.py:159
+msgid "Invalid email or password."
+msgstr "Neplatný e-mail nebo heslo."
+
+#: app/routes/account/v1/login.py:167
+msgid "Your account is locked. Please contact support."
+msgstr "Váš účet je uzamčen. Kontaktujte prosím podporu."
+
+#: app/routes/account/v1/login.py:173
+msgid "Your email address has not been verified. Please check your inbox."
+msgstr "Vaše e-mailová adresa nebyla ověřena. Zkontrolujte prosím svou schránku."
+
+#: app/routes/account/v1/login.py:179
+msgid "Your account is pending review. Please wait for approval."
+msgstr "Váš účet čeká na schválení. Vyčkejte prosím na potvrzení."
+
+#: app/routes/account/v1/logout.py:91
+msgid "Logout service is temporarily unavailable. Please try again later."
+msgstr "Služba odhlášení je dočasně nedostupná. Zkuste to prosím později."
+
+#: app/routes/account/v1/email_templates/login_notification.jinja.html:2
+msgid "Successful Login Notification"
+msgstr "Oznámení o úspěšném přihlášení"
+
+#: app/routes/account/v1/email_templates/login_notification.jinja.html:3
+#, python-format
+msgid "Hello %(name)s"
+msgstr "Dobrý den, %(name)s"
+
+#: app/routes/account/v1/email_templates/login_notification.jinja.html:4
+#, python-format
+msgid ""
+"We noticed a successful login to your account from the following IP "
+"address: %(ip_address)s"
+msgstr ""
+"Zaznamenali jsme úspěšné přihlášení k vašemu účtu z následující IP "
+"adresy: %(ip_address)s"
+
+#: app/routes/account/v1/email_templates/login_notification.jinja.html:5
+msgid ""
+"If this was you, no further action is needed. If you did not perform this"
+" login, please secure your account immediately."
+msgstr ""
+"Pokud jste to byli vy, není potřeba žádná další akce. Pokud jste toto "
+"přihlášení neprovedli, okamžitě zabezpečte svůj účet."
+
+#: app/routes/account/v1/email_templates/login_notification.jinja.html:6
+msgid "Best regards,"
+msgstr "S pozdravem,"
+
+#: app/routes/account/v1/email_templates/login_notification.jinja.html:6
+msgid "Your Security Team"
+msgstr "Váš bezpečnostní tým"
+

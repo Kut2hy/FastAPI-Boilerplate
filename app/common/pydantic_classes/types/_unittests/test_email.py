@@ -7,7 +7,7 @@ from fastapi import FastAPI, Form, Query
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, Secret, ValidationError
 
-from app.common.pydantic_classes.types.config import STANDARD_VARCHAR_LENGTH, NULLISH_STRINGS
+from app.common.pydantic_classes.types.config import NULLISH_STRINGS, STANDARD_VARCHAR_LENGTH
 from app.common.pydantic_classes.types.email import (
     Email,
     prepare_email_value,

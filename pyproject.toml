@@ -8,7 +8,10 @@ authors = [
 ]
 requires-python = ">=3.14.5"
 dependencies = [
+    "aiofiles>=25.1.0",
+    "aiosmtplib>=5.1.2",
     "argon2-cffi>=25.1.0",
+    "babel>=2.18.0",
     "fastapi[standard]>=0.141.1",
     "httptools>=0.8.0",
     "jinjax>=0.65",
@@ -34,6 +37,7 @@ dev = [
 [tool.ruff]
 target-version = "py314"
 src = ["app", ]
+line-length = 120
 
 [tool.ruff.lint]
 # Enable recommended rules plus additional useful ones
