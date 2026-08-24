@@ -49,7 +49,7 @@ DUMMY_PASSWORD_HASH = hash_password("dummy-password-for-timing")
 
 LOGIN_NOTIFICATION_SENDER = Mailer(
     subject_template="{{ _('Successful Login Notification') }}",
-    body_template=f"{BASE_FS_PATH}/email_templates/login_notification.jinja.html",
+    body_template="login_notification.jinja.html",
     private_email=True,
 )
 

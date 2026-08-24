@@ -22,8 +22,11 @@ if TYPE_CHECKING:
 LOGGER = getLogger(__name__)
 """Logger for the Mailer module."""
 
+EMAIL_TEMPLATE_DIR = APP_SETTINGS.templates_root / "email"
+"""Directory containing email templates."""
+
 JINJA_ENV = Environment(
-    loader=FileSystemLoader(APP_SETTINGS.endpoints_root),
+    loader=FileSystemLoader(EMAIL_TEMPLATE_DIR),
     cache_size=0,  # Disable caching as all templates are loaded in __init__ of Mailer class
     autoescape=True,
     auto_reload=APP_SETTINGS.in_development,
@@ -40,8 +43,6 @@ JINJA_ENV.install_gettext_translations(  # type: ignore
 class Mailer:
     """Class for sending emails using SMTP."""
 
-    route_root: Path = APP_SETTINGS.endpoints_root
-
     def __init__(
         self,
         subject_template: str,
@@ -57,7 +58,7 @@ class Mailer:
 
         """
         self.subject_template = JINJA_ENV.from_string(subject_template)
-        self.body_template = JINJA_ENV.get_template((self.route_root / body_template).as_posix())
+        self.body_template = JINJA_ENV.get_template(body_template)
         self.private_email = private_email
 
     async def send_email(

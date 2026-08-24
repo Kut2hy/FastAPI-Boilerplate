@@ -1,0 +1,5 @@
+{% for fragment in fragments.values() %}
+<hx-partial id="{{ get_hx_id(fragment.name) }}" hx-target="{{ get_hx_target(fragment.name) }}" hx-swap="{{ fragment.hx_swap }}">
+    {%- include fragment.path %}
+</hx-partial>
+{% endfor %}

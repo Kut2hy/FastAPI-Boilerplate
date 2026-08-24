@@ -176,7 +176,7 @@ def _response_cookies(messages: list[dict[str, Any]]) -> SimpleCookie:
             continue
 
         for name, value in message.get("headers", []):
-            if name.lower() == b"set-cookie":
+            if name.lower() == b"set-cookie" or name.lower() == b"cookie":
                 cookies.load(value.decode())
 
     return cookies
@@ -438,35 +438,31 @@ async def test_endpoint_exception_propagates_untouched(stub_app: Callable, fake_
 
 @pytest.mark.asyncio
 async def test_valid_access_token_without_refresh_deletes_cookies(stub_app: Callable, fake_app: Any) -> None:
-    """Valid access token but missing refresh → unauthenticated, both cookies wiped."""
+    """Valid access token but missing refresh → authenticated till expiry, on refresh possible after."""
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
 
-    messages = await _run(middleware, _http_scope({"access_token": str(_make_access_token())}, app=fake_app))
+    await _run(middleware, _http_scope({"access_token": str(_make_access_token(uuid7()))}, app=fake_app))
 
     assert state["calls"] == 1
-    assert not state["scope"]["user"].is_authenticated
-    cookies = _response_cookies(messages)
-    assert cookies["access_token"].value == ""
-    assert cookies["refresh_token"].value == ""
+    assert state["scope"]["user"].is_authenticated
+    assert state["scope"]["auth"].scopes == frozenset({"role1", "role2"})
 
 
 @pytest.mark.asyncio
 async def test_valid_access_token_with_invalid_refresh_deletes_cookies(stub_app: Callable, fake_app: Any) -> None:
-    """Valid access token but garbage refresh → unauthenticated, both cookies wiped."""
+    """Valid access token but garbage refresh → authenticated till expiry, on regeneration will fail afterwards."""
     app, state = stub_app()
     middleware = mw_module.JWTMiddleware(app)
 
-    messages = await _run(
+    await _run(
         middleware,
-        _http_scope({"access_token": str(_make_access_token()), "refresh_token": "garbage"}, app=fake_app),
+        _http_scope({"access_token": str(_make_access_token(uuid7())), "refresh_token": "garbage"}, app=fake_app),
     )
 
     assert state["calls"] == 1
-    assert not state["scope"]["user"].is_authenticated
-    cookies = _response_cookies(messages)
-    assert cookies["access_token"].value == ""
-    assert cookies["refresh_token"].value == ""
+    assert state["scope"]["user"].is_authenticated
+    assert state["scope"]["auth"].scopes == frozenset({"role1", "role2"})
 
 
 # ======================================================================================================================

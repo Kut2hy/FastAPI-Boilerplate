@@ -59,6 +59,12 @@ class AppSettings(BaseSettings):
 
     @computed_field
     @property
+    def templates_root(self) -> Path:
+        """Root directory of the templates."""
+        return (Path(__file__).parent / "templates").resolve()
+
+    @computed_field
+    @property
     def in_development(self) -> bool:
         """Check if the application is running in development mode."""
         return self.environment == "development"
