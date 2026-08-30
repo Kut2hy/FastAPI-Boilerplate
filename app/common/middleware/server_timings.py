@@ -1,5 +1,7 @@
 """Middleware for measuring and logging server timings for each request."""
 
+from functools import wraps
+from time import perf_counter
 from typing import TYPE_CHECKING
 
 from app.app_config import APP_SETTINGS
@@ -7,6 +9,8 @@ from app.common.context_vars import ServerTimingAPI
 from app.common.header_encoding import to_header_name_fmt, to_header_value_fmt
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 DEV_MODE = APP_SETTINGS.in_development
@@ -14,6 +18,33 @@ DEV_MODE = APP_SETTINGS.in_development
 
 SERVER_TIMINGS_HEADER = to_header_name_fmt("Server-Timing")
 """Pre-encoded header name for 'Server-Timing' to avoid repeated encoding in the middleware."""
+
+
+def capture_duration() -> Callable[[Callable], Callable]:
+    """Server timing decorator to measure the execution time of a function and store it in the context variable.
+
+    Returns:
+        Callable: A decorator that wraps the target function to measure its execution time.
+
+    """
+    def _decorator(func: Callable) -> Callable:
+
+        # NOTE: Multiple Ruff rules are disabled here. As there is no way to annotate the return type or arguments.
+        @wraps(func)
+        async def _wrapper(*args, **kwargs):  # noqa: ANN002, ANN003, ANN202
+            start_time = perf_counter()
+            result = await func(*args, **kwargs)
+            end_time = perf_counter()
+
+            # Store the timing in the context variable
+            server_timings = ServerTimingAPI.get() or {}
+            ServerTimingAPI.set({**server_timings, func.__name__: (end_time - start_time) * 1000})
+
+            return result
+
+        return _wrapper
+
+    return _decorator
 
 
 class ServerTimingsMiddleware:

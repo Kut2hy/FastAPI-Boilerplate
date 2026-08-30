@@ -18,6 +18,7 @@ from app.core.jwt.access_token import ACCESS_TOKEN_COOKIE_KWARGS, AccessToken
 from app.core.jwt.refresh_token import REFRESH_TOKEN_COOKIE_KWARGS, RefreshToken
 from app.core.password import hash_password, verify_password
 from app.core.redis.dependencies import Redis, get_redis_client
+from app.core.redis.limiter import add_access_attempt, reset_access_attempt
 from app.core.smtp.mailer import Mailer
 from app.i18n.context_translations import gettext
 from app.piccolo.tables.login_attempt import add_login_attempt as add_login_audit_trace
@@ -38,11 +39,8 @@ ATTEMPT_LIMIT = 3
 ATTEMPT_LOCKOUT_DURATION = 3600
 """Lockout duration in seconds after exceeding the maximum number of login attempts."""
 
-ATTEMPT_EMAIL_KEY_TEMPLATE = "login_attempts:em:%(email)s"
-"""Redis key template for tracking login attempts by email address."""
-
-ATTEMPT_IP_KEY_TEMPLATE = "login_attempts:ip:%(ip)s"
-"""Redis key template for tracking login attempts by IP address."""
+ATTEMPT_PREFIX = "login"
+"""Prefix for Redis keys related to login attempts."""
 
 DUMMY_PASSWORD_HASH = hash_password("dummy-password-for-timing")
 """Dummy password hash used to mitigate timing attacks when the user does not exist."""
@@ -52,54 +50,6 @@ LOGIN_NOTIFICATION_SENDER = Mailer(
     body_template="login_notification.jinja.html",
     private_email=True,
 )
-
-
-async def add_login_attempt(email: str, ip: str, redis: Redis) -> bool:
-    """Add a login attempt for the given email and IP in Redis.
-
-    Args:
-        ip (str): The IP address to track login attempts for.
-        email (str): The email address to track login attempts for.
-        redis (Redis): The Redis client.
-
-    Returns:
-        bool: True if the number of attempts is within the limit, False if the limit has been exceeded.
-
-    """
-    email_key = ATTEMPT_EMAIL_KEY_TEMPLATE % {"email": email}
-    ip_key = ATTEMPT_IP_KEY_TEMPLATE % {"ip": ip}
-
-    # Use a Redis pipeline to increment the login attempt count and set the expiration in a single atomic operation.
-    async with redis.pipeline(transaction=True) as connection:
-        # Add/increment the login attempt count
-        connection.incr(email_key)
-        connection.incr(ip_key)
-
-        # Set the expiration for the key to lock out further attempts after the limit is reached
-        # Each time a login attempt is made, the expiration is reset to ensure that the lockout duration
-        # is enforced from the last attempt.
-        connection.expire(email_key, ATTEMPT_LOCKOUT_DURATION)
-        connection.expire(ip_key, ATTEMPT_LOCKOUT_DURATION)
-
-        email_attempts, ip_attempts, _, _ = await connection.execute()
-
-        return email_attempts <= ATTEMPT_LIMIT and ip_attempts <= ATTEMPT_LIMIT
-
-
-async def reset_login_attempts(email: str, ip: str, redis: Redis) -> None:
-    """Reset the login attempts for the given email and IP in Redis.
-
-    Args:
-        email (str): The email address to reset login attempts for.
-        ip (str): The IP address to reset login attempts for.
-        redis (Redis): The Redis client.
-
-    """
-    async with redis.pipeline(transaction=True) as connection:
-        connection.delete(ATTEMPT_EMAIL_KEY_TEMPLATE % {"email": email})
-        connection.delete(ATTEMPT_IP_KEY_TEMPLATE % {"ip": ip})
-
-        await connection.execute()
 
 
 # NOTE: SlowAPI's rate limiting is not used here because it does not provide the flexibility needed to track
@@ -134,7 +84,14 @@ async def login(
     """
     # NOTE: Limit exception is not logged as it beats the purpose of having Redis track login attempts,
     #   which is to prevent brute-force attacks.
-    if not await add_login_attempt(email=email.get_secret_value(), ip=client_ip_addr, redis=redis):
+    if not await add_access_attempt(
+        prefix=ATTEMPT_PREFIX,
+        email=email.get_secret_value(),
+        ip=client_ip_addr,
+        redis=redis,
+        ttl=ATTEMPT_LOCKOUT_DURATION,
+        limit=ATTEMPT_LIMIT,
+    ):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=gettext("Too many login attempts. Please try again after %(duration)s minutes.")
@@ -216,7 +173,8 @@ async def login(
         )
 
     # Clear Redis limits
-    await reset_login_attempts(
+    await reset_access_attempt(
+        prefix=ATTEMPT_PREFIX,
         email=email.get_secret_value(),
         ip=client_ip_addr,
         redis=redis,
