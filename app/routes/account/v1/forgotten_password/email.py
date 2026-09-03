@@ -1,4 +1,4 @@
-"""Initial register route for the account API."""
+"""Initial forgotten password route for the account API."""
 
 from pathlib import Path
 from secrets import token_urlsafe
@@ -25,45 +25,45 @@ from app.i18n.context_translations import gettext
 
 from .._shared_models import InputEmail  # noqa: TC001 -> For Pydantic, it must not be in TYPE_CHECKING
 from .__constants import (
-    REGISTRATION_COOKIE_KWARGS,
-    REGISTRATION_FS_PATH_PARTS,
-    REGISTRATION_LOCKOUT_TTL,
-    REGISTRATION_PREFIX,
-    REGISTRATION_URL,
+    FORGOTTEN_PASSW_COOKIE_KWARGS,
+    FORGOTTEN_PASSW_FS_PATH_PARTS,
+    FORGOTTEN_PASSW_LOCKOUT_TTL,
+    FORGOTTEN_PASSW_PREFIX,
+    FORGOTTEN_PASSW_URL,
 )
 
 CURRENT_ENDPOINT = Path(__file__).stem
 """Current endpoint name, derived from the file name of this route module."""
 
-NOTIFICATION_SENDER = Mailer(
-    subject_template="{{ _('Invitation to Register') }}",
-    body_template="registration_invitation.jinja.html",
+FORGOTTEN_PASSW_NOTIFICATION_SENDER = Mailer(
+    subject_template="{{ _('Forgotten Password Request') }}",
+    body_template="forgotten_passw_invitation.jinja.html",
     private_email=True,
 )
 
 router = APIRouter(
-    prefix=REGISTRATION_URL + f"/{CURRENT_ENDPOINT}",
-    tags=[*REGISTRATION_FS_PATH_PARTS, CURRENT_ENDPOINT],
+    prefix=FORGOTTEN_PASSW_URL + f"/{CURRENT_ENDPOINT}",
+    tags=[*FORGOTTEN_PASSW_FS_PATH_PARTS, CURRENT_ENDPOINT],
     dependencies=[Depends(enforce_not_logged_in())],
 )
 
 
 @router.get("/")
 async def get_email() -> Response:
-    """Render the email submission page for user registration.
+    """Render the email submission page for users who have forgotten their password.
 
     Returns:
-        HTMLResponse: The HTML response containing the email submission form.
+        HTMLResponse: The HTML response containing the email submission form for forgotten password.
 
     """
     content = f"""
     <html>
         <head>
-            <title>Register</title>
+            <title>Forgotten Password</title>
         </head>
         <body>
-            <h1>Register</h1>
-            <form action="{REGISTRATION_URL}/{CURRENT_ENDPOINT}" method="post">
+            <h1>Forgotten Password</h1>
+            <form action="{FORGOTTEN_PASSW_URL}/{CURRENT_ENDPOINT}" method="post">
                 <label for="email">Email:</label>
                 <input type="email" id="email" name="email" required>
                 <button type="submit">Submit</button>
@@ -86,22 +86,21 @@ async def post_email(
     redis: Annotated[Redis, Depends(get_redis_client())],
     background_tasks: BackgroundTasks,
 ) -> Response:
-    """Handle user registration.
+    """Handle forgotten password request.
 
     Args:
         request (Request): The FastAPI request object.
         form_data (InputEmail): The user's email address from the form data.
-        client_ip_addr (str): The client's IP address for tracking registration attempts.
-        password (RawPassword): The user's raw password from the form data.
-        redis (Redis): The Redis client for tracking registration attempts.
+        client_ip_addr (str): The client's IP address for tracking forgotten password attempts.
+        redis (Redis): The Redis client for tracking forgotten password attempts.
         background_tasks (BackgroundTasks): FastAPI background tasks for sending emails.
-        registration_token (str | None): The registration token from the cookies, if present.
+        FORGOTTEN_PASSW_token (str | None): The forgotten password token from the cookies, if present.
 
     Returns:
-        Response: A JSON response indicating success or failure of the registration process.
+        Response: A JSON response indicating success or failure of the forgotten password process.
 
     Raises:
-        HTTPException: If the registration fails due to exceeding attempt limits or other issues.
+        HTTPException: If the forgotten password request fails due to exceeding attempt limits or other issues.
 
     """
     url_token = token_urlsafe(64)
@@ -111,40 +110,42 @@ async def post_email(
     email = form_data.email
 
     if not await add_access_attempt(
-        prefix=REGISTRATION_PREFIX,
+        prefix=FORGOTTEN_PASSW_PREFIX,
         email=email.get_secret_value(),
         ip=client_ip_addr,
         redis=redis,
-        ttl=REGISTRATION_LOCKOUT_TTL,
+        ttl=FORGOTTEN_PASSW_LOCKOUT_TTL,
     ):
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=gettext("Too many registration attempts. Please try again after %(duration)s minutes.")
-            % {"duration": REGISTRATION_LOCKOUT_TTL // 60},
+            detail=gettext("Too many forgotten password attempts. Please try again after %(duration)s minutes.")
+            % {"duration": FORGOTTEN_PASSW_LOCKOUT_TTL // 60},
         )
 
     if not await create_session(
-        prefix=REGISTRATION_PREFIX, url_token=url_token, email=email.get_secret_value(), redis=redis
+        prefix=FORGOTTEN_PASSW_PREFIX, url_token=url_token, email=email.get_secret_value(), redis=redis
     ):
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=gettext("Failed to create registration. Please try again later."),
+            detail=gettext("Failed to create forgotten password entry. Please try again later."),
         )
 
     background_tasks.add_task(
-        NOTIFICATION_SENDER.send_email,
+        FORGOTTEN_PASSW_NOTIFICATION_SENDER.send_email,
         send_to={email.get_secret_value()},
-        render_context={"registration_link": f"{scheme}://{hostname}:{port}{REGISTRATION_URL}/alias?token={url_token}"},
+        render_context={
+            "forgotten_passw_link": f"{scheme}://{hostname}:{port}{FORGOTTEN_PASSW_URL}/password?token={url_token}"
+        },
     )
 
     content = """
     <html>
         <head>
-            <title>Register</title>
+            <title>Forgotten Password</title>
         </head>
         <body>
-            <h1>Register</h1>
-            <p>Please check your email for further instructions to complete the registration process.</p>
+            <h1>Forgotten Password</h1>
+            <p>Please check your email for further instructions to reset your password.</p>
         </body>
     </html>
     """
@@ -154,5 +155,5 @@ async def post_email(
         content=content,
     )
 
-    response.delete_cookie(**REGISTRATION_COOKIE_KWARGS)
+    response.delete_cookie(**FORGOTTEN_PASSW_COOKIE_KWARGS)
     return response

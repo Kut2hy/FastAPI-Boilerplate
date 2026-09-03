@@ -254,3 +254,35 @@ async def account_exists(email: str | None = None, alias: str | None = None) -> 
             alias_exists = await UserAccount.exists().where(UserAccount.user_alias == alias)
 
     return email_exists, alias_exists
+
+
+@capture_duration()
+async def change_password(email: Email, new_password: RawPassword) -> bool:
+    """Change the password for a user account.
+
+    Args:
+        email (Email): The email of the user account.
+        new_password (RawPassword): The new raw password to set.
+
+    Returns:
+        bool: True if the password was changed successfully, False otherwise.
+
+    """
+    hashed_password = hash_password(new_password.get_secret_value())
+
+    async with UserAccount._meta.db.transaction() as transaction:  # noqa: SLF001
+        user_account = await UserAccount.objects().where(UserAccount.email == email.get_secret_value()).first()
+
+        if not user_account:
+            return False
+
+        user_account.password_hash = hashed_password
+        user_account.updated_by = user_account.id  # Assuming the user is changing their own password
+
+        result = await user_account.save().returning(UserAccount.id)
+
+        if not bool(result) or len(result) != 1:
+            transaction.rollback()
+            return False
+
+        return True

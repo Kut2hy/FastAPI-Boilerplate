@@ -16,21 +16,21 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 
 from app.common.dependencies.client import enforce_not_logged_in
 from app.core.redis.dependencies import Redis, get_redis_client
+from app.core.redis.session import delete_session, get_session
 from app.core.smtp.mailer import Mailer
 from app.i18n.context_translations import gettext
 from app.piccolo.tables.user_account import account_exists, create_account
 
-from .__common import (
-    REGISTRATION_COOKIE_KWARGS,
-    REGISTRATION_FS_PATH_PARTS,
-    REGISTRATION_URL,
-    delete_registration,
-    get_registration,
-    validate_redis_state,
-)
-from .__models import (
+from .._redis_state import validate_redis_state
+from .._shared_models import (
     AfterAccountInfoState,
     InputPassword,
+)
+from .__constants import (
+    REGISTRATION_COOKIE_KWARGS,
+    REGISTRATION_FS_PATH_PARTS,
+    REGISTRATION_PREFIX,
+    REGISTRATION_URL,
 )
 
 CURRENT_ENDPOINT = Path(__file__).stem
@@ -68,12 +68,12 @@ async def get_password(
 
     """
     redis_state_model = validate_redis_state(
-        redis_state=await get_registration(url_token=registration_token, redis=redis),
+        redis_state=await get_session(prefix=REGISTRATION_PREFIX, url_token=registration_token, redis=redis),
         model_class=AfterAccountInfoState,
     )
 
     if redis_state_model is None:
-        await delete_registration(url_token=registration_token, redis=redis)
+        await delete_session(prefix=REGISTRATION_PREFIX, url_token=registration_token, redis=redis)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=gettext("Invalid or expired registration."),
@@ -126,12 +126,12 @@ async def post_password(
 
     """
     redis_state_model = validate_redis_state(
-        redis_state=await get_registration(url_token=registration_token, redis=redis),
+        redis_state=await get_session(prefix=REGISTRATION_PREFIX, url_token=registration_token, redis=redis),
         model_class=AfterAccountInfoState,
     )
 
     if redis_state_model is None:
-        await delete_registration(url_token=registration_token, redis=redis)
+        await delete_session(prefix=REGISTRATION_PREFIX, url_token=registration_token, redis=redis)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=gettext("Invalid or expired registration."),
@@ -143,7 +143,7 @@ async def post_password(
     )
 
     if email_exists:
-        await delete_registration(url_token=registration_token, redis=redis)
+        await delete_session(prefix=REGISTRATION_PREFIX, url_token=registration_token, redis=redis)
         response = RedirectResponse(
             url="/",
             status_code=status.HTTP_303_SEE_OTHER,
@@ -184,7 +184,7 @@ async def post_password(
             detail=gettext("Failed to create user account. Please try again later."),
         )
 
-    await delete_registration(url_token=registration_token, redis=redis)
+    await delete_session(prefix=REGISTRATION_PREFIX, url_token=registration_token, redis=redis)
 
     background_tasks.add_task(
         REGISTER_NOTIFICATION_SENDER.send_email,
