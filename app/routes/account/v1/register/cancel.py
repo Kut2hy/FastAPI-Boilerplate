@@ -13,13 +13,14 @@ from fastapi.responses import HTMLResponse
 
 from app.common.dependencies.client import enforce_not_logged_in
 from app.core.redis.dependencies import Redis, get_redis_client
+from app.core.redis.session import delete_session
 from app.i18n.context_translations import gettext
 
-from .__common import (
+from .__constants import (
     REGISTRATION_COOKIE_KWARGS,
     REGISTRATION_FS_PATH_PARTS,
+    REGISTRATION_PREFIX,
     REGISTRATION_URL,
-    delete_registration,
 )
 
 CURRENT_ENDPOINT = Path(__file__).stem
@@ -64,6 +65,6 @@ async def get_cancel(
 
     # NOTE: Both the cookie deletion and the Redis entry deletion are token agnostic.
     response.delete_cookie(**REGISTRATION_COOKIE_KWARGS)
-    await delete_registration(redis, registration_token)
+    await delete_session(prefix=REGISTRATION_PREFIX, url_token=registration_token, redis=redis)
 
     return response
