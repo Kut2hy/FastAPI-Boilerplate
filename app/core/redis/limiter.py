@@ -12,6 +12,9 @@ EMAIL_ATTEMPT_KEY_TEMPLATE = "%(prefix)s:attempts:email:%(email)s"
 IP_ATTEMPT_KEY_TEMPLATE = "%(prefix)s:attempts:ip:%(ip)s"
 """Redis key template for tracking IP-based attempts."""
 
+ATTEMPTS_LIMIT = 3
+"""Maximum number of allowed attempts before lockout."""
+
 
 async def add_access_attempt(
     prefix: str,
@@ -19,7 +22,7 @@ async def add_access_attempt(
     ip: str,
     redis: Redis,
     ttl: int = 3600,
-    limit: int = 3,
+    limit: int = ATTEMPTS_LIMIT,
 ) -> bool:
     """Add an endpoint call attempt for the given email and IP in Redis.
 

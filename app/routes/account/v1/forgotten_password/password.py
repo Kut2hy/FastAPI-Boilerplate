@@ -54,18 +54,18 @@ router = APIRouter(
 
 
 @router.get("/")
-async def get_alias(
+async def get_password(
     token: Annotated[str, Query()],
     redis: Annotated[Redis, Depends(get_redis_client())],
 ) -> Response:
-    """Handle the password retrieval for forgotten password.
+    """Handle the password reset for forgotten password.
 
     Args:
         token (str): The forgotten password token from the query parameters.
         redis (Redis): The Redis client for retrieving forgotten password information.
 
     Returns:
-        HTMLResponse: An HTML response containing the email associated with the registration token.
+        HTMLResponse: An HTML response containing the password reset form.
 
     Raises:
         HTTPException: If the forgotten password token is invalid or has expired.
