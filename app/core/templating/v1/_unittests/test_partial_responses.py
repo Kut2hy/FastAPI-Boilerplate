@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-import pytest  # noqa: TC002
+import pytest
 from fastapi.templating import Jinja2Templates
 from jinja2 import Environment, FileSystemLoader
 
