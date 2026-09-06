@@ -10,6 +10,7 @@ from app.core.jwt.refresh_token import RefreshToken
 from app.core.redis.limiter import ATTEMPTS_LIMIT
 from app.core.redis.session import SESSION_KEY_TEMPLATE
 from app.routes.account.v1.forgotten_password import email
+from app.routes.account.v1.forgotten_password.__constants import FORGOTTEN_PASSW_COOKIE_NAME
 
 if TYPE_CHECKING:
     from httpx import AsyncClient
@@ -44,6 +45,9 @@ async def find_keys(redis_client: Redis, pattern: str, count: int = 10) -> list[
     return [key async for key in redis_client.scan_iter(match=pattern, count=count)]
 
 
+# ======================================================================================================================
+# GET ROUTE
+# ======================================================================================================================
 async def test_get_email_route(app_client: AsyncClient) -> None:
     """Test the GET /forgotten_password/email route.
 
@@ -71,6 +75,9 @@ async def test_get_email_route_as_authenticated_user(app_client: AsyncClient) ->
     assert "You are already logged in." in response.content.decode("utf-8")
 
 
+# ======================================================================================================================
+# POST ROUTE
+# ======================================================================================================================
 async def test_post_email_route(app_client: AsyncClient, redis_client: Redis) -> None:
     """Test the POST /forgotten_password/email route.
 
@@ -97,6 +104,9 @@ async def test_post_email_route(app_client: AsyncClient, redis_client: Redis) ->
 
     # Test that a session key is created in Redis for the forgotten password process
     assert session_result
+
+    # Test that the session cookie is set in the client
+    assert FORGOTTEN_PASSW_COOKIE_NAME in app_client.cookies
 
 
 async def test_post_email_route_limiter(app_client: AsyncClient) -> None:

@@ -166,7 +166,7 @@ async def post_password(
 
     if not await change_password(email=redis_state_model.email, new_password=form_data.password):
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=gettext("Failed to change password."),
         )
 

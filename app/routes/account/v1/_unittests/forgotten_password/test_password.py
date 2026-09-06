@@ -155,7 +155,7 @@ async def test_get_invalid_session_state(app_client: AsyncClient, redis_client: 
 async def test_get_deleted_account(app_client: AsyncClient, redis_client: Redis) -> None:
     """Test the GET /forgotten_password/password reset route for a deleted account.
 
-    The account is never seeded, so the real ``account_exists`` lookup finds nothing.
+    The account has been deleted, so the route should handle this scenario gracefully.
 
     """
     # Create a faksimili session in Redis, that would be created at POST /forgotten_password/email
@@ -192,6 +192,7 @@ async def test_post_password_route_as_authenticated_user(app_client: AsyncClient
 
 @pytest.mark.usefixtures("test_account")
 async def test_post_all_valid(app_client: AsyncClient, redis_client: Redis) -> None:
+    """Test the POST /forgotten_password/password route with all valid inputs."""
     app_client.cookies.set(FORGOTTEN_PASSW_COOKIE_NAME, TEST_URL_TOKEN)
 
     # Create a faksimili session in Redis, that would be created at GET /forgotten_password/password
@@ -202,10 +203,7 @@ async def test_post_all_valid(app_client: AsyncClient, redis_client: Redis) -> N
 
     response = await app_client.post(
         f"{BASE_URL}/",
-        data={
-            "password": TEST_PASSWORD,
-            "confirm_password": TEST_PASSWORD,
-        },
+        data={"password": TEST_PASSWORD, "confirm_password": TEST_PASSWORD},
     )
 
     # Tests HTML response for successful password reset
@@ -221,17 +219,11 @@ async def test_post_all_valid(app_client: AsyncClient, redis_client: Redis) -> N
 
 
 async def test_post_missing_cookie(app_client: AsyncClient) -> None:
-    """Test the POST /forgotten_password/password reset route when the forgotten password cookie is missing.
+    """Test the POST /forgotten_password/password reset route when the forgotten password cookie is missing."""
 
-    This test checks if the route returns a 400 Bad Request response when the session is missing.
-
-    """
     response = await app_client.post(
         f"{BASE_URL}/",
-        data={
-            "password": TEST_PASSWORD,
-            "confirm_password": TEST_PASSWORD,
-        },
+        data={"password": TEST_PASSWORD, "confirm_password": TEST_PASSWORD},
     )
 
     assert response.status_code == 400
@@ -239,19 +231,13 @@ async def test_post_missing_cookie(app_client: AsyncClient) -> None:
 
 
 async def test_post_missing_session(app_client: AsyncClient) -> None:
-    """Test the POST /forgotten_password/password reset route when the session is missing.
+    """Test the POST /forgotten_password/password reset route when the session is missing."""
 
-    This test checks if the route returns a 400 Bad Request response when the forgotten password session is missing.
-
-    """
     app_client.cookies.set(FORGOTTEN_PASSW_COOKIE_NAME, TEST_URL_TOKEN)
 
     response = await app_client.post(
         f"{BASE_URL}/",
-        data={
-            "password": TEST_PASSWORD,
-            "confirm_password": TEST_PASSWORD,
-        },
+        data={"password": TEST_PASSWORD, "confirm_password": TEST_PASSWORD},
     )
 
     assert response.status_code == 400
@@ -259,12 +245,8 @@ async def test_post_missing_session(app_client: AsyncClient) -> None:
 
 
 async def test_post_invalid_session_state(app_client: AsyncClient, redis_client: Redis) -> None:
-    """Test the POST /forgotten_password/password reset route when the session is in an invalid state.
+    """Test the POST /forgotten_password/password reset route when the Redis session is in an invalid state."""
 
-    This test checks if the route returns a 400 Bad Request response when the forgotten
-    password Redis session is not in expected state.
-
-    """
     app_client.cookies.set(FORGOTTEN_PASSW_COOKIE_NAME, TEST_URL_TOKEN)
 
     # Redis session is missing the expected "valid" field. AKA somehow skipping GET step
@@ -272,11 +254,110 @@ async def test_post_invalid_session_state(app_client: AsyncClient, redis_client:
 
     response = await app_client.post(
         f"{BASE_URL}/",
-        data={
-            "password": TEST_PASSWORD,
-            "confirm_password": TEST_PASSWORD,
-        },
+        data={"password": TEST_PASSWORD, "confirm_password": TEST_PASSWORD},
     )
 
     assert response.status_code == 400
     assert "Invalid or expired forgotten password token" in response.text
+
+
+@pytest.mark.usefixtures("db_transaction")
+async def test_post_deleted_account(app_client: AsyncClient, redis_client: Redis) -> None:
+    """Test the POST /forgotten_password/password reset route when the account has been deleted."""
+
+    app_client.cookies.set(FORGOTTEN_PASSW_COOKIE_NAME, TEST_URL_TOKEN)
+
+    # Redis session is valid
+    await redis_client.hset(TEST_SESSION_KEY, mapping={"email": TEST_EMAIL, "valid": "true"})
+
+    response = await app_client.post(
+        f"{BASE_URL}/",
+        data={"password": TEST_PASSWORD, "confirm_password": TEST_PASSWORD},
+    )
+
+    assert response.status_code == 400
+    assert "Failed to change password." in response.text
+
+
+@pytest.mark.parametrize(
+    "form_data",
+    [
+        ({"password": TEST_PASSWORD}),
+        ({"confirm_password": TEST_PASSWORD}),
+    ],
+)
+async def test_post_missing_password(app_client: AsyncClient, redis_client: Redis, form_data: dict) -> None:
+    """Test the POST /forgotten_password/password reset route when the password is missing."""
+
+    app_client.cookies.set(FORGOTTEN_PASSW_COOKIE_NAME, TEST_URL_TOKEN)
+
+    # Redis session is valid
+    await redis_client.hset(TEST_SESSION_KEY, mapping={"email": TEST_EMAIL, "valid": "true"})
+
+    response = await app_client.post(f"{BASE_URL}/", data=form_data)
+
+    assert response.status_code == 422
+    assert "Both password and confirm_password must be provided" in response.text
+
+
+@pytest.mark.parametrize(
+    ("password", "confirm_password", "error_message"),
+    [
+        (TEST_PASSWORD, "B@dConfirmPa33", "Passwords do not match."),
+        ("B@dConfirmPa33", TEST_PASSWORD, "Passwords do not match."),
+    ],
+)
+async def test_post_password_mismatch(
+    app_client: AsyncClient,
+    redis_client: Redis,
+    password: str,
+    confirm_password: str,
+    error_message: str,
+) -> None:
+    """Test the POST /forgotten_password/password reset route when the passwords do not match."""
+
+    app_client.cookies.set(FORGOTTEN_PASSW_COOKIE_NAME, TEST_URL_TOKEN)
+
+    # Redis session is valid
+    await redis_client.hset(TEST_SESSION_KEY, mapping={"email": TEST_EMAIL, "valid": "true"})
+
+    response = await app_client.post(
+        f"{BASE_URL}/",
+        data={"password": password, "confirm_password": confirm_password},
+    )
+
+    assert response.status_code == 422
+    assert error_message in response.text
+
+
+@pytest.mark.parametrize(
+    ("password", "confirm_password", "error_message"),
+    [
+        ("", "", "Password does not match the required pattern."),
+        ("short", "short", "Password does not match the required pattern."),
+        ("NoSpecialChar123", "NoSpecialChar123", "Password does not match the required pattern."),
+        ("nouppercase123!", "nouppercase123!", "Password does not match the required pattern."),
+        ("NOLOWERCASE123!", "NOLOWERCASE123!", "Password does not match the required pattern."),
+    ],
+)
+async def test_post_invalid_password_patterns(
+    app_client: AsyncClient,
+    redis_client: Redis,
+    password: str,
+    confirm_password: str,
+    error_message: str,
+) -> None:
+    """Test the POST /forgotten_password/password reset route with various invalid password patterns."""
+
+    app_client.cookies.set(FORGOTTEN_PASSW_COOKIE_NAME, TEST_URL_TOKEN)
+
+    # Redis session is valid
+    await redis_client.hset(TEST_SESSION_KEY, mapping={"email": TEST_EMAIL, "valid": "true"})
+
+    response = await app_client.post(
+        f"{BASE_URL}/",
+        data={"password": password, "confirm_password": confirm_password},
+    )
+
+    assert response.status_code == 422
+    assert error_message in response.text
