@@ -1,31 +1,21 @@
 """Test suite for the email module in the forgotten password feature of the account v1 routes."""
 
-import os
 from typing import TYPE_CHECKING
 from uuid import uuid7
 
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-from redis.asyncio import Redis
 
-from app.app_config import APP_SETTINGS
 from app.core.jwt.access_token import AccessToken
 from app.core.jwt.refresh_token import RefreshToken
-from app.core.redis.dependencies import IN_STATE_NAME
 from app.core.redis.limiter import ATTEMPTS_LIMIT
 from app.core.redis.session import SESSION_KEY_TEMPLATE
-from app.main import app as main_app
-
-from .. import email
+from app.routes.account.v1.forgotten_password import email
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
+    from httpx import AsyncClient
+    from redis.asyncio import Redis
 
-pytestmark = pytest.mark.asyncio
-
-SERVER_URL = f"http://{APP_SETTINGS.host}:{APP_SETTINGS.port}"
-"""Base URL for the test server. Must match host for trusted host middleware to allow requests through."""
+pytestmark = pytest.mark.asyncio(loop_scope="session")
 
 BASE_URL = email.FORGOTTEN_PASSW_URL + f"/{email.CURRENT_ENDPOINT}"
 """Base URL for the forgotten password email route being tested."""
@@ -38,39 +28,6 @@ TEST_ACCESS_TOKEN = AccessToken.generate_token(subject=TEST_USER_UUID, alias="te
 
 TEST_REFRESH_TOKEN = RefreshToken.generate_token(subject=TEST_USER_UUID)
 """Refresh token for the test user, used in authenticated requests."""
-
-
-@pytest_asyncio.fixture(autouse=True)
-async def redis_client() -> AsyncGenerator[Redis]:
-    """Attach a clean test Redis client to the app state, mirroring what the lifespan does on startup."""
-    client = Redis(
-        host=os.getenv("REDIS_HOST", "localhost"),
-        port=int(os.getenv("REDIS_PORT", "6379")),
-        db=15,  # Use separate DB for tests
-        decode_responses=True,
-    )
-
-    await client.ping()
-    await client.flushdb()
-
-    setattr(main_app.state, IN_STATE_NAME, client)
-
-    yield client
-
-    delattr(main_app.state, IN_STATE_NAME)
-
-    await client.flushdb()
-    await client.aclose()
-
-
-@pytest_asyncio.fixture
-async def app_client() -> AsyncGenerator[AsyncClient]:
-    """Drive the ASGI app in the running test event loop, so it shares the loop with the Redis fixture."""
-    async with AsyncClient(
-        transport=ASGITransport(app=main_app),
-        base_url=SERVER_URL,
-    ) as client:
-        yield client
 
 
 @pytest.fixture(autouse=True)

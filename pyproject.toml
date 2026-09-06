@@ -34,6 +34,13 @@ dev = [
     "ruff>=0.16.1",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+# Modules that share a session scoped resource (Postgres pool, Redis client) opt in per file with
+# `pytestmark = pytest.mark.asyncio(loop_scope="session")`, otherwise they hit
+# "Future attached to a different loop". Everything else stays on a throwaway per-test loop.
+asyncio_default_fixture_loop_scope = "function"
+
 [tool.ruff]
 target-version = "py314"
 src = ["app", ]
@@ -104,6 +111,8 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 "**/test_*.py" = ["ARG", "PLR2004", "S101"]
 "**/unittest_*.py" = ["ARG", "PLR2004", "PT009", "PT027", "ANN202"]
 "**/__init__.py" = ["F401", "D104"]  # Allow unused imports in __init__.py
+# pytest hook and fixture signatures are matched by argument name, so unused arguments are unavoidable.
+"conftest.py" = ["ARG001"]
 
 [tool.ruff.lint.flake8-type-checking]
 # Base classes whose subclasses need annotations available at runtime (e.g. Pydantic
