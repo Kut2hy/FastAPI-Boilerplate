@@ -136,7 +136,7 @@
   }
 
   menu {
-    @apply flex flex-col h-13 lg:h-full w-full lg:w-[15vw] lg:min-w-50 bg-gray-700 p-2 gap-3 rounded-xl
+    @apply flex flex-col justify-between h-13 lg:h-full w-full lg:w-[15vw] lg:min-w-50 bg-gray-700 p-2 gap-3 rounded-xl
       overflow-hidden transition-[height] duration-500 shadow-soft;
 
     /* Collapsed below xl only; the desktop sidebar always shows its sections */

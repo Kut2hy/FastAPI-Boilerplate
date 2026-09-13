@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-08-22 23:30+0200\n"
+"POT-Creation-Date: 2026-09-13 16:40+0200\n"
 "PO-Revision-Date: 2026-08-22 23:30+0200\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -18,7 +18,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: app/common/exceptions.py:60 app/routes/account/v1/login.py:196
+#: app/common/exceptions.py:60
+#: app/routes/account/v1/forgotten_password/password.py:107
+#: app/routes/account/v1/login.py:153
+#: app/routes/account/v1/register/alias.py:106
+#: app/routes/account/v1/register/alias.py:191
+#: app/routes/account/v1/register/info.py:149
 msgid "Internal server error."
 msgstr "Internal server error."
 
@@ -38,24 +43,32 @@ msgstr "You do not have the required permissions to access this resource."
 msgid "Service unavailable. Try again later."
 msgstr "Service unavailable. Try again later."
 
-#: app/routes/account/v1/login.py:140
+#: app/core/templating/v1/response.py:151 app/templates/base/full.jinja.html:17
+msgid "Untitled"
+msgstr "Untitled"
+
+#: app/routes/home.py:36
+msgid "Home page"
+msgstr "Home page"
+
+#: app/routes/account/v1/login.py:97
 #, python-format
 msgid "Too many login attempts. Please try again after %(duration)s minutes."
 msgstr "Too many login attempts. Please try again after %(duration)s minutes."
 
-#: app/routes/account/v1/login.py:153 app/routes/account/v1/login.py:159
+#: app/routes/account/v1/login.py:110 app/routes/account/v1/login.py:116
 msgid "Invalid email or password."
 msgstr "Invalid email or password."
 
-#: app/routes/account/v1/login.py:167
+#: app/routes/account/v1/login.py:124
 msgid "Your account is locked. Please contact support."
 msgstr "Your account is locked. Please contact support."
 
-#: app/routes/account/v1/login.py:173
+#: app/routes/account/v1/login.py:130
 msgid "Your email address has not been verified. Please check your inbox."
 msgstr "Your email address has not been verified. Please check your inbox."
 
-#: app/routes/account/v1/login.py:179
+#: app/routes/account/v1/login.py:136
 msgid "Your account is pending review. Please wait for approval."
 msgstr "Your account is pending review. Please wait for approval."
 
@@ -63,16 +76,182 @@ msgstr "Your account is pending review. Please wait for approval."
 msgid "Logout service is temporarily unavailable. Please try again later."
 msgstr "Logout service is temporarily unavailable. Please try again later."
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:2
+#: app/routes/account/v1/forgotten_password/email.py:69
+#: app/templates/routes/account/v1/forgotten_password/email.get.jinja.html:1
+#: app/templates/routes/account/v1/forgotten_password/email.post.jinja.html:1
+msgid "Forgotten Password"
+msgstr "Forgotten Password"
+
+#: app/routes/account/v1/forgotten_password/email.py:121
+#, python-format
+msgid ""
+"Too many forgotten password attempts. Please try again after %(duration)s"
+" minutes."
+msgstr ""
+"Too many forgotten password attempts. Please try again after %(duration)s"
+" minutes."
+
+#: app/routes/account/v1/forgotten_password/email.py:130
+msgid "Failed to create forgotten password entry. Please try again later."
+msgstr "Failed to create forgotten password entry. Please try again later."
+
+#: app/routes/account/v1/forgotten_password/email.py:144
+msgid "Forgotten Password - Email Sent"
+msgstr "Forgotten Password - Email Sent"
+
+#: app/routes/account/v1/forgotten_password/password.py:88
+#: app/routes/account/v1/forgotten_password/password.py:160
+msgid "Invalid or expired forgotten password token."
+msgstr "Invalid or expired forgotten password token."
+
+#: app/routes/account/v1/forgotten_password/password.py:113
+msgid "Forgotten Password - Reset"
+msgstr "Forgotten Password - Reset"
+
+#: app/routes/account/v1/forgotten_password/password.py:166
+msgid "Failed to change password."
+msgstr "Failed to change password."
+
+#: app/routes/account/v1/forgotten_password/password.py:180
+msgid "Forgotten Password - Password Changed"
+msgstr "Forgotten Password - Password Changed"
+
+#: app/routes/account/v1/register/alias.py:82
+#: app/routes/account/v1/register/alias.py:157
+#: app/routes/account/v1/register/info.py:81
+#: app/routes/account/v1/register/info.py:113
+#: app/routes/account/v1/register/password.py:84
+#: app/routes/account/v1/register/password.py:132
+msgid "Invalid or expired registration."
+msgstr "Invalid or expired registration."
+
+#: app/routes/account/v1/register/alias.py:112
+msgid "Registration - User Alias"
+msgstr "Registration - User Alias"
+
+#: app/routes/account/v1/register/alias.py:197
+#: app/routes/account/v1/register/info.py:87
+msgid "Registration - User Info"
+msgstr "Registration - User Info"
+
+#: app/routes/account/v1/register/cancel.py:54
+#: app/routes/account/v1/register/cancel.py:57
+msgid "Cancel Registration"
+msgstr "Cancel Registration"
+
+#: app/routes/account/v1/register/cancel.py:58
+msgid ""
+"Registration has been cancelled. You can start the registration again if "
+"you wish."
+msgstr ""
+"Registration has been cancelled. You can start the registration again if "
+"you wish."
+
+#: app/routes/account/v1/register/cancel.py:59
+msgid "Go to Home"
+msgstr "Go to Home"
+
+#: app/routes/account/v1/register/email.py:66
+#: app/routes/account/v1/register/email.py:139
+msgid "Registration - Email"
+msgstr "Registration - Email"
+
+#: app/routes/account/v1/register/email.py:118
+#, python-format
+msgid ""
+"Too many registration attempts. Please try again after %(duration)s "
+"minutes."
+msgstr ""
+"Too many registration attempts. Please try again after %(duration)s "
+"minutes."
+
+#: app/routes/account/v1/register/email.py:127
+msgid "Failed to create registration. Please try again later."
+msgstr "Failed to create registration. Please try again later."
+
+#: app/routes/account/v1/register/info.py:155
+#: app/routes/account/v1/register/password.py:90
+#: app/routes/account/v1/register/password.py:193
+msgid "Registration - Password"
+msgstr "Registration - Password"
+
+#: app/routes/account/v1/register/password.py:179
+msgid "Failed to create user account. Please try again later."
+msgstr "Failed to create user account. Please try again later."
+
+#: app/templates/base/exc.jinja.html:1
+msgid "Exception occurred"
+msgstr "Exception occurred"
+
+#: app/templates/base/exc.jinja.html:1
+msgid "Request ID"
+msgstr "Request ID"
+
+#: app/templates/base/exc.jinja.html:3
+#: app/templates/routes/account/v1/forgotten_password/email.post.jinja.html:3
+#: app/templates/routes/account/v1/forgotten_password/password.post.jinja.html:3
+#: app/templates/routes/account/v1/register/email.post.jinja.html:3
+#: app/templates/routes/account/v1/register/password_success.jinja.html:3
+msgid "Go back home"
+msgstr "Go back home"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:2
+msgid "Password Reset Invitation"
+msgstr "Password Reset Invitation"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:3
+msgid "You have requested to reset your password."
+msgstr "You have requested to reset your password."
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:4
+msgid "Please click the link below to reset your password:"
+msgstr "Please click the link below to reset your password:"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:5
+#: app/templates/routes/account/v1/forgotten_password/password.get.jinja.html:1
+msgid "Reset Password"
+msgstr "Reset Password"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:6
+#: app/templates/email/forgotten_passw_success.jinja.html:5
+#: app/templates/email/login_notification.jinja.html:6
+#: app/templates/email/registration_invitation.jinja.html:6
+#: app/templates/email/registration_success.jinja.html:5
+msgid "Best regards,"
+msgstr "Best regards,"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:6
+#: app/templates/email/forgotten_passw_success.jinja.html:5
+#: app/templates/email/login_notification.jinja.html:6
+#: app/templates/email/registration_invitation.jinja.html:6
+#: app/templates/email/registration_success.jinja.html:5
+msgid "Your Security Team"
+msgstr "Your Security Team"
+
+#: app/templates/email/forgotten_passw_success.jinja.html:2
+#: app/templates/routes/account/v1/forgotten_password/password.post.jinja.html:1
+msgid "Password Reset Successful"
+msgstr "Password Reset Successful"
+
+#: app/templates/email/forgotten_passw_success.jinja.html:3
+#: app/templates/routes/account/v1/forgotten_password/password.post.jinja.html:2
+msgid "Your password has been successfully reset."
+msgstr "Your password has been successfully reset."
+
+#: app/templates/email/forgotten_passw_success.jinja.html:4
+msgid "You can now log in using your new password."
+msgstr "You can now log in using your new password."
+
+#: app/templates/email/login_notification.jinja.html:2
 msgid "Successful Login Notification"
 msgstr "Successful Login Notification"
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:3
+#: app/templates/email/login_notification.jinja.html:3
 #, python-format
 msgid "Hello %(name)s"
 msgstr "Hello %(name)s"
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:4
+#: app/templates/email/login_notification.jinja.html:4
 #, python-format
 msgid ""
 "We noticed a successful login to your account from the following IP "
@@ -81,7 +260,7 @@ msgstr ""
 "We noticed a successful login to your account from the following IP "
 "address: %(ip_address)s"
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:5
+#: app/templates/email/login_notification.jinja.html:5
 msgid ""
 "If this was you, no further action is needed. If you did not perform this"
 " login, please secure your account immediately."
@@ -89,11 +268,98 @@ msgstr ""
 "If this was you, no further action is needed. If you did not perform this"
 " login, please secure your account immediately."
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:6
-msgid "Best regards,"
-msgstr "Best regards,"
+#: app/templates/email/registration_invitation.jinja.html:2
+msgid "Invitation to Register"
+msgstr "Invitation to Register"
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:6
-msgid "Your Security Team"
-msgstr "Your Security Team"
+#: app/templates/email/registration_invitation.jinja.html:3
+msgid "You are invited to register for an account."
+msgstr "You are invited to register for an account."
+
+#: app/templates/email/registration_invitation.jinja.html:4
+msgid "Please click the link below to complete your registration:"
+msgstr "Please click the link below to complete your registration:"
+
+#: app/templates/email/registration_invitation.jinja.html:5
+msgid "Complete Registration"
+msgstr "Complete Registration"
+
+#: app/templates/email/registration_success.jinja.html:2
+#: app/templates/routes/account/v1/register/password_success.jinja.html:1
+msgid "Registration Successful"
+msgstr "Registration Successful"
+
+#: app/templates/email/registration_success.jinja.html:3
+#: app/templates/routes/account/v1/register/password_success.jinja.html:2
+msgid "Your account has been successfully created."
+msgstr "Your account has been successfully created."
+
+#: app/templates/email/registration_success.jinja.html:4
+msgid "You can now log in using your credentials."
+msgstr "You can now log in using your credentials."
+
+#: app/templates/layout/menu.jinja.html:2
+msgid "Home"
+msgstr "Home"
+
+#: app/templates/layout/menu.jinja.html:3
+#: app/templates/routes/account/v1/register/alias.get.jinja.html:1
+#: app/templates/routes/account/v1/register/email.get.jinja.html:1
+#: app/templates/routes/account/v1/register/email.post.jinja.html:1
+#: app/templates/routes/account/v1/register/info.get.jinja.html:1
+#: app/templates/routes/account/v1/register/password.get.jinja.html:1
+msgid "Register"
+msgstr "Register"
+
+#: app/templates/layout/menu.jinja.html:4
+msgid "Forgot Password"
+msgstr "Forgot Password"
+
+#: app/templates/layout/menu.jinja.html:12
+msgid "Title"
+msgstr "Title"
+
+#: app/templates/routes/home.jinja.html:1
+msgid "Home Page"
+msgstr "Home Page"
+
+#: app/templates/routes/home.jinja.html:1
+msgid "Welcome to the home page!"
+msgstr "Welcome to the home page!"
+
+#: app/templates/routes/account/v1/forgotten_password/email.get.jinja.html:1
+msgid "Enter your email to reset your password."
+msgstr "Enter your email to reset your password."
+
+#: app/templates/routes/account/v1/forgotten_password/email.post.jinja.html:2
+msgid "Please check your email for further instructions to reset your password."
+msgstr "Please check your email for further instructions to reset your password."
+
+#: app/templates/routes/account/v1/forgotten_password/password.get.jinja.html:1
+msgid "Enter your new password with confirmation."
+msgstr "Enter your new password with confirmation."
+
+#: app/templates/routes/account/v1/register/alias.get.jinja.html:1
+msgid "Enter your alias that will be publicly visible."
+msgstr "Enter your alias that will be publicly visible."
+
+#: app/templates/routes/account/v1/register/email.get.jinja.html:1
+msgid "Enter your email address for registration."
+msgstr "Enter your email address for registration."
+
+#: app/templates/routes/account/v1/register/email.post.jinja.html:2
+msgid ""
+"Please check your email for further instructions to complete your "
+"registration."
+msgstr ""
+"Please check your email for further instructions to complete your "
+"registration."
+
+#: app/templates/routes/account/v1/register/info.get.jinja.html:1
+msgid "Enter your user information."
+msgstr "Enter your user information."
+
+#: app/templates/routes/account/v1/register/password.get.jinja.html:1
+msgid "Enter your password with confirmation."
+msgstr "Enter your password with confirmation."
 

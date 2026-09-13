@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2026-08-22 23:30+0200\n"
+"POT-Creation-Date: 2026-09-13 16:40+0200\n"
 "PO-Revision-Date: 2026-08-22 23:30+0200\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: cs\n"
@@ -18,7 +18,12 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.18.0\n"
 
-#: app/common/exceptions.py:60 app/routes/account/v1/login.py:196
+#: app/common/exceptions.py:60
+#: app/routes/account/v1/forgotten_password/password.py:107
+#: app/routes/account/v1/login.py:153
+#: app/routes/account/v1/register/alias.py:106
+#: app/routes/account/v1/register/alias.py:191
+#: app/routes/account/v1/register/info.py:149
 msgid "Internal server error."
 msgstr "Interní chyba serveru."
 
@@ -38,24 +43,32 @@ msgstr "Nemáte potřebná oprávnění pro přístup k tomuto zdroji."
 msgid "Service unavailable. Try again later."
 msgstr "Služba je nedostupná. Zkuste to znovu později."
 
-#: app/routes/account/v1/login.py:140
+#: app/core/templating/v1/response.py:151 app/templates/base/full.jinja.html:17
+msgid "Untitled"
+msgstr "Bez názvu"
+
+#: app/routes/home.py:36
+msgid "Home page"
+msgstr "Domovská stránka"
+
+#: app/routes/account/v1/login.py:97
 #, python-format
 msgid "Too many login attempts. Please try again after %(duration)s minutes."
 msgstr "Příliš mnoho pokusů o přihlášení. Zkuste to znovu za %(duration)s minut."
 
-#: app/routes/account/v1/login.py:153 app/routes/account/v1/login.py:159
+#: app/routes/account/v1/login.py:110 app/routes/account/v1/login.py:116
 msgid "Invalid email or password."
 msgstr "Neplatný e-mail nebo heslo."
 
-#: app/routes/account/v1/login.py:167
+#: app/routes/account/v1/login.py:124
 msgid "Your account is locked. Please contact support."
 msgstr "Váš účet je uzamčen. Kontaktujte prosím podporu."
 
-#: app/routes/account/v1/login.py:173
+#: app/routes/account/v1/login.py:130
 msgid "Your email address has not been verified. Please check your inbox."
 msgstr "Vaše e-mailová adresa nebyla ověřena. Zkontrolujte prosím svou schránku."
 
-#: app/routes/account/v1/login.py:179
+#: app/routes/account/v1/login.py:136
 msgid "Your account is pending review. Please wait for approval."
 msgstr "Váš účet čeká na schválení. Vyčkejte prosím na potvrzení."
 
@@ -63,16 +76,179 @@ msgstr "Váš účet čeká na schválení. Vyčkejte prosím na potvrzení."
 msgid "Logout service is temporarily unavailable. Please try again later."
 msgstr "Služba odhlášení je dočasně nedostupná. Zkuste to prosím později."
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:2
+#: app/routes/account/v1/forgotten_password/email.py:69
+#: app/templates/routes/account/v1/forgotten_password/email.get.jinja.html:1
+#: app/templates/routes/account/v1/forgotten_password/email.post.jinja.html:1
+msgid "Forgotten Password"
+msgstr "Zapomenuté heslo"
+
+#: app/routes/account/v1/forgotten_password/email.py:121
+#, python-format
+msgid ""
+"Too many forgotten password attempts. Please try again after %(duration)s"
+" minutes."
+msgstr ""
+"Příliš mnoho pokusů o obnovení hesla. Zkuste to znovu za %(duration)s "
+"minut."
+
+#: app/routes/account/v1/forgotten_password/email.py:130
+msgid "Failed to create forgotten password entry. Please try again later."
+msgstr "Nepodařilo se vytvořit žádost o obnovení hesla. Zkuste to prosím později."
+
+#: app/routes/account/v1/forgotten_password/email.py:144
+msgid "Forgotten Password - Email Sent"
+msgstr "Zapomenuté heslo – e-mail odeslán"
+
+#: app/routes/account/v1/forgotten_password/password.py:88
+#: app/routes/account/v1/forgotten_password/password.py:160
+msgid "Invalid or expired forgotten password token."
+msgstr "Neplatný nebo vypršelý token pro obnovení hesla."
+
+#: app/routes/account/v1/forgotten_password/password.py:113
+msgid "Forgotten Password - Reset"
+msgstr "Zapomenuté heslo – obnovení"
+
+#: app/routes/account/v1/forgotten_password/password.py:166
+msgid "Failed to change password."
+msgstr "Nepodařilo se změnit heslo."
+
+#: app/routes/account/v1/forgotten_password/password.py:180
+msgid "Forgotten Password - Password Changed"
+msgstr "Zapomenuté heslo – heslo změněno"
+
+#: app/routes/account/v1/register/alias.py:82
+#: app/routes/account/v1/register/alias.py:157
+#: app/routes/account/v1/register/info.py:81
+#: app/routes/account/v1/register/info.py:113
+#: app/routes/account/v1/register/password.py:84
+#: app/routes/account/v1/register/password.py:132
+msgid "Invalid or expired registration."
+msgstr "Neplatná nebo vypršelá registrace."
+
+#: app/routes/account/v1/register/alias.py:112
+msgid "Registration - User Alias"
+msgstr "Registrace – přezdívka"
+
+#: app/routes/account/v1/register/alias.py:197
+#: app/routes/account/v1/register/info.py:87
+msgid "Registration - User Info"
+msgstr "Registrace – osobní údaje"
+
+#: app/routes/account/v1/register/cancel.py:54
+#: app/routes/account/v1/register/cancel.py:57
+msgid "Cancel Registration"
+msgstr "Zrušit registraci"
+
+#: app/routes/account/v1/register/cancel.py:58
+msgid ""
+"Registration has been cancelled. You can start the registration again if "
+"you wish."
+msgstr ""
+"Registrace byla zrušena. Pokud chcete, můžete registraci zahájit znovu."
+
+#: app/routes/account/v1/register/cancel.py:59
+msgid "Go to Home"
+msgstr "Přejít na domovskou stránku"
+
+#: app/routes/account/v1/register/email.py:66
+#: app/routes/account/v1/register/email.py:139
+msgid "Registration - Email"
+msgstr "Registrace – e-mail"
+
+#: app/routes/account/v1/register/email.py:118
+#, python-format
+msgid ""
+"Too many registration attempts. Please try again after %(duration)s "
+"minutes."
+msgstr "Příliš mnoho pokusů o registraci. Zkuste to znovu za %(duration)s minut."
+
+#: app/routes/account/v1/register/email.py:127
+msgid "Failed to create registration. Please try again later."
+msgstr "Nepodařilo se vytvořit registraci. Zkuste to prosím později."
+
+#: app/routes/account/v1/register/info.py:155
+#: app/routes/account/v1/register/password.py:90
+#: app/routes/account/v1/register/password.py:193
+msgid "Registration - Password"
+msgstr "Registrace – heslo"
+
+#: app/routes/account/v1/register/password.py:179
+msgid "Failed to create user account. Please try again later."
+msgstr "Nepodařilo se vytvořit uživatelský účet. Zkuste to prosím později."
+
+#: app/templates/base/exc.jinja.html:1
+msgid "Exception occurred"
+msgstr "Došlo k chybě"
+
+#: app/templates/base/exc.jinja.html:1
+msgid "Request ID"
+msgstr "ID požadavku"
+
+#: app/templates/base/exc.jinja.html:3
+#: app/templates/routes/account/v1/forgotten_password/email.post.jinja.html:3
+#: app/templates/routes/account/v1/forgotten_password/password.post.jinja.html:3
+#: app/templates/routes/account/v1/register/email.post.jinja.html:3
+#: app/templates/routes/account/v1/register/password_success.jinja.html:3
+msgid "Go back home"
+msgstr "Zpět na domovskou stránku"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:2
+msgid "Password Reset Invitation"
+msgstr "Pozvánka k obnovení hesla"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:3
+msgid "You have requested to reset your password."
+msgstr "Požádali jste o obnovení svého hesla."
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:4
+msgid "Please click the link below to reset your password:"
+msgstr "Pro obnovení hesla klikněte na odkaz níže:"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:5
+#: app/templates/routes/account/v1/forgotten_password/password.get.jinja.html:1
+msgid "Reset Password"
+msgstr "Obnovit heslo"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:6
+#: app/templates/email/forgotten_passw_success.jinja.html:5
+#: app/templates/email/login_notification.jinja.html:6
+#: app/templates/email/registration_invitation.jinja.html:6
+#: app/templates/email/registration_success.jinja.html:5
+msgid "Best regards,"
+msgstr "S pozdravem,"
+
+#: app/templates/email/forgotten_passw_invitation.jinja.html:6
+#: app/templates/email/forgotten_passw_success.jinja.html:5
+#: app/templates/email/login_notification.jinja.html:6
+#: app/templates/email/registration_invitation.jinja.html:6
+#: app/templates/email/registration_success.jinja.html:5
+msgid "Your Security Team"
+msgstr "Váš bezpečnostní tým"
+
+#: app/templates/email/forgotten_passw_success.jinja.html:2
+#: app/templates/routes/account/v1/forgotten_password/password.post.jinja.html:1
+msgid "Password Reset Successful"
+msgstr "Heslo bylo úspěšně obnoveno"
+
+#: app/templates/email/forgotten_passw_success.jinja.html:3
+#: app/templates/routes/account/v1/forgotten_password/password.post.jinja.html:2
+msgid "Your password has been successfully reset."
+msgstr "Vaše heslo bylo úspěšně obnoveno."
+
+#: app/templates/email/forgotten_passw_success.jinja.html:4
+msgid "You can now log in using your new password."
+msgstr "Nyní se můžete přihlásit pomocí nového hesla."
+
+#: app/templates/email/login_notification.jinja.html:2
 msgid "Successful Login Notification"
 msgstr "Oznámení o úspěšném přihlášení"
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:3
+#: app/templates/email/login_notification.jinja.html:3
 #, python-format
 msgid "Hello %(name)s"
 msgstr "Dobrý den, %(name)s"
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:4
+#: app/templates/email/login_notification.jinja.html:4
 #, python-format
 msgid ""
 "We noticed a successful login to your account from the following IP "
@@ -81,7 +257,7 @@ msgstr ""
 "Zaznamenali jsme úspěšné přihlášení k vašemu účtu z následující IP "
 "adresy: %(ip_address)s"
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:5
+#: app/templates/email/login_notification.jinja.html:5
 msgid ""
 "If this was you, no further action is needed. If you did not perform this"
 " login, please secure your account immediately."
@@ -89,11 +265,100 @@ msgstr ""
 "Pokud jste to byli vy, není potřeba žádná další akce. Pokud jste toto "
 "přihlášení neprovedli, okamžitě zabezpečte svůj účet."
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:6
-msgid "Best regards,"
-msgstr "S pozdravem,"
+#: app/templates/email/registration_invitation.jinja.html:2
+msgid "Invitation to Register"
+msgstr "Pozvánka k registraci"
 
-#: app/routes/account/v1/email_templates/login_notification.jinja.html:6
-msgid "Your Security Team"
-msgstr "Váš bezpečnostní tým"
+#: app/templates/email/registration_invitation.jinja.html:3
+msgid "You are invited to register for an account."
+msgstr "Zveme vás k vytvoření účtu."
+
+#: app/templates/email/registration_invitation.jinja.html:4
+msgid "Please click the link below to complete your registration:"
+msgstr "Pro dokončení registrace klikněte na odkaz níže:"
+
+#: app/templates/email/registration_invitation.jinja.html:5
+msgid "Complete Registration"
+msgstr "Dokončit registraci"
+
+#: app/templates/email/registration_success.jinja.html:2
+#: app/templates/routes/account/v1/register/password_success.jinja.html:1
+msgid "Registration Successful"
+msgstr "Registrace byla úspěšná"
+
+#: app/templates/email/registration_success.jinja.html:3
+#: app/templates/routes/account/v1/register/password_success.jinja.html:2
+msgid "Your account has been successfully created."
+msgstr "Váš účet byl úspěšně vytvořen."
+
+#: app/templates/email/registration_success.jinja.html:4
+msgid "You can now log in using your credentials."
+msgstr "Nyní se můžete přihlásit svými přihlašovacími údaji."
+
+#: app/templates/layout/menu.jinja.html:2
+msgid "Home"
+msgstr "Domů"
+
+#: app/templates/layout/menu.jinja.html:3
+#: app/templates/routes/account/v1/register/alias.get.jinja.html:1
+#: app/templates/routes/account/v1/register/email.get.jinja.html:1
+#: app/templates/routes/account/v1/register/email.post.jinja.html:1
+#: app/templates/routes/account/v1/register/info.get.jinja.html:1
+#: app/templates/routes/account/v1/register/password.get.jinja.html:1
+msgid "Register"
+msgstr "Registrace"
+
+#: app/templates/layout/menu.jinja.html:4
+msgid "Forgot Password"
+msgstr "Zapomenuté heslo"
+
+#: app/templates/layout/menu.jinja.html:12
+msgid "Title"
+msgstr "Název"
+
+#: app/templates/routes/home.jinja.html:1
+msgid "Home Page"
+msgstr "Domovská stránka"
+
+#: app/templates/routes/home.jinja.html:1
+msgid "Welcome to the home page!"
+msgstr "Vítejte na domovské stránce!"
+
+#: app/templates/routes/account/v1/forgotten_password/email.get.jinja.html:1
+msgid "Enter your email to reset your password."
+msgstr "Zadejte svůj e-mail pro obnovení hesla."
+
+#: app/templates/routes/account/v1/forgotten_password/email.post.jinja.html:2
+msgid "Please check your email for further instructions to reset your password."
+msgstr ""
+"Zkontrolujte prosím svou e-mailovou schránku, kde najdete další pokyny k "
+"obnovení hesla."
+
+#: app/templates/routes/account/v1/forgotten_password/password.get.jinja.html:1
+msgid "Enter your new password with confirmation."
+msgstr "Zadejte nové heslo a jeho potvrzení."
+
+#: app/templates/routes/account/v1/register/alias.get.jinja.html:1
+msgid "Enter your alias that will be publicly visible."
+msgstr "Zadejte přezdívku, která bude veřejně viditelná."
+
+#: app/templates/routes/account/v1/register/email.get.jinja.html:1
+msgid "Enter your email address for registration."
+msgstr "Zadejte svou e-mailovou adresu pro registraci."
+
+#: app/templates/routes/account/v1/register/email.post.jinja.html:2
+msgid ""
+"Please check your email for further instructions to complete your "
+"registration."
+msgstr ""
+"Zkontrolujte prosím svou e-mailovou schránku, kde najdete další pokyny k "
+"dokončení registrace."
+
+#: app/templates/routes/account/v1/register/info.get.jinja.html:1
+msgid "Enter your user information."
+msgstr "Zadejte své uživatelské údaje."
+
+#: app/templates/routes/account/v1/register/password.get.jinja.html:1
+msgid "Enter your password with confirmation."
+msgstr "Zadejte heslo a jeho potvrzení."
 
