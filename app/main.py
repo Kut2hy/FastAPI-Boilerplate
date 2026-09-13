@@ -10,7 +10,9 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.app_config import APP_SETTINGS
-from app.common.exceptions import http_exception_handler, unhandled_exception_handler
+# from app.common.exceptions import http_exception_handler, unhandled_exception_handler
+from app.common.exc_handlers.html import html_exception_handler
+from app.common.exc_handlers.unhandled import unhandled_exception_handler
 from app.common.middleware.headers import HeaderMiddleware
 from app.common.middleware.localization import LocalizationMiddleware
 from app.common.middleware.server_timings import ServerTimingsMiddleware
@@ -51,7 +53,7 @@ app = FastAPI(
 # For unhandled exceptions, add a generic handler that returns a 500 response with a generic message.
 app.add_exception_handler(Exception, unhandled_exception_handler)
 
-app.add_exception_handler(StarletteHTTPException, http_exception_handler)
+app.add_exception_handler(StarletteHTTPException, html_exception_handler)
 
 # ======================================================================================================================
 # Middleware (executed in reverse order of registration: last added = outermost)

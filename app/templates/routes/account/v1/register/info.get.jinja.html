@@ -1,0 +1,24 @@
+<Card title={{ _("Register") }} description={{ _("Enter your user information.") }}>
+    <SimpleForm href="/account/v1/register/info" target={{ get_hx_target('main') }} nonce_hash={{ nonce_hash }}>
+        <label for="first_name">First Name:</label>
+        <input type="text" id="first_name" name="first_name" autocapitalize="words" required>
+        <label for="middle_name">Middle Name:</label>
+        <input type="text" id="middle_name" name="middle_name" autocapitalize="words">
+        <label for="last_name">Last Name:</label>
+        <input type="text" id="last_name" name="last_name" autocapitalize="words" required>
+        <label for="titles_before">Titles Before:</label>
+        <input type="text" id="titles_before" name="titles_before" autocapitalize="words">
+        <label for="titles_after">Titles After:</label>
+        <input type="text" id="titles_after" name="titles_after" autocapitalize="words">
+        <label for="phone_number">Phone Number:</label>
+        <input type="text" id="phone_number" name="phone_number">
+        <label for="street">Street:</label>
+        <input type="text" id="street" name="street" autocapitalize="words">
+        <label for="city">City:</label>
+        <input type="text" id="city" name="city" autocapitalize="words">
+        <label for="postal_code">Postal Code:</label>
+        <input type="text" id="postal_code" name="postal_code">
+        <label for="country">Country:</label>
+        <input type="text" id="country" name="country" autocapitalize="on">
+    </SimpleForm>
+</Card>

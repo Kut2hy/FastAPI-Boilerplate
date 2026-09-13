@@ -1,0 +1,17 @@
+{#-def title="", description="", image_src="" -#}
+<div class="card">
+    {%- if image_src != "" %}
+    <div class="card-image">
+        <img src="{{ image_src }}">
+    </div>
+    {%- endif %}
+    <div class="card-content">
+        <div class="card-header">
+            {%- if title %}<h2 class="card-title">{{ title | capitalize }}</h2>{% endif %}
+            {%- if description %}<p class="card-description">{{ description }}</p>{% endif %}
+        </div>
+        <div class="card-body">
+            {{ content }}
+        </div>
+    </div>
+</div>

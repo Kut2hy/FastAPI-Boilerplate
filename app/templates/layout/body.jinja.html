@@ -1,7 +1,8 @@
-<div id="{{ get_hx_id('menu') }}">
-    {% include fragments["menu"].path %}
-</div>
-
-<div id="{{ get_hx_id('main') }}">
-    {% include fragments["main"].path %}
+<div class="root-wrapper">
+    <div id="{{ get_hx_id('menu') }}">
+        {% include fragments["menu"].path %}
+    </div>
+    <main id="{{ get_hx_id('main') }}">
+        {% include fragments["main"].path %}
+    </main>
 </div>

@@ -1,6 +1,274 @@
+@layer theme, base, components, effects, states, tones, utilities, overrides;
 @import "tailwindcss";
 
 /* Super important to hide elements with x-cloak until Alpine.js is loaded and removes the attribute */
 [x-cloak] {
   display: none !important;
+}
+
+@theme {
+  --shadow-none:
+    0 1px 2px -0.5px rgba(0, 0, 0, 0), 0 2px 4px -1px rgba(0, 0, 0, 0);
+  --shadow-soft:
+    0 1px 2px -0.5px rgba(0, 0, 0, 0.35), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+  /* Hover: highest lift, biggest offset */
+  --shadow-raised:
+    0 3px 6px -1.5px rgba(0, 0, 0, 0.45), 0 5px 10px -2.5px rgba(0, 0, 0, 0.25);
+  /* Active/pressed: shallower than hover, but more impactful than resting */
+  --shadow-pressed:
+    0 3px 6px -1.5px rgba(0, 0, 0, 0.5), 0 5px 10px -2.5px rgba(0, 0, 0, 0.35);
+
+  --breakpoint-3xl: 112rem;
+
+  --aspect-w-golden-ratio: 1618 / 1000;
+  --aspect-w-2-golden-ratio: 3236 / 1000;
+  --aspect-h-golden-ratio: 1000 / 1618;
+}
+
+@layer base {
+  /* Required so block-size can animate between 0 and the `auto` keyword */
+  :root {
+    interpolate-size: allow-keywords;
+  }
+
+  /* Firefox only: Chromium ignores ::-webkit-scrollbar-* as soon as these are set */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--color-gray-700) transparent;
+    }
+  }
+
+  ::-webkit-scrollbar {
+    @apply w-1 h-2 bg-transparent;
+  }
+
+  ::-webkit-scrollbar-track,
+  ::-webkit-scrollbar-track-piece,
+  ::-webkit-scrollbar-corner {
+    @apply bg-transparent;
+  }
+
+  /* Inset the scrollable track so the thumb never reaches the container edges */
+  ::-webkit-scrollbar-track:vertical {
+    @apply my-3;
+  }
+
+  ::-webkit-scrollbar-track:horizontal {
+    @apply mx-3;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    /* Full-width (w-2) roller sitting on top of the transparent track */
+    @apply bg-gray-700 rounded-full;
+
+    &:hover {
+      @apply bg-gray-800;
+    }
+  }
+
+  ::-webkit-scrollbar-button {
+    @apply hidden w-0 h-0;
+  }
+
+  p {
+    @apply mb-6;
+  }
+
+  div.card {
+    @apply bg-white flex flex-col rounded-xl shadow-soft overflow-auto;
+
+    div.card-image {
+      @apply w-full min-h-60 aspect-w-golden-ratio overflow-hidden;
+
+      img {
+        @apply w-full h-full object-cover;
+      }
+    }
+
+    div.card-content {
+      @apply flex flex-col gap-3 p-3;
+    }
+  }
+
+  h1 {
+    @apply text-5xl font-bold;
+  }
+
+  h2 {
+    @apply text-3xl font-semibold;
+  }
+
+  h3,
+  label,
+  summary {
+    @apply text-xl font-medium;
+  }
+
+  input {
+    @apply h-9 w-full rounded-lg border-2 border-gray-700 p-3;
+  }
+
+  input[type="checkbox"] {
+    @apply aspect-square;
+  }
+
+  textarea {
+    @apply aspect-w-golden-ratio w-full rounded-lg border-2 p-3;
+  }
+
+  button {
+    @apply h-9 w-full max-w-80;
+  }
+
+  body {
+    @apply relative
+      flex flex-col
+      h-screen
+      w-screen 3xl:w-[112rem]
+      lg:mx-auto
+      p-3 gap-3 overflow-hidden
+      bg-linear-65 from-gray-300 from-10% via-gray-50 via-30% to-gray-200 to-90%;
+  }
+
+  main {
+    @apply flex flex-col grow overflow-auto -m-2 p-2;
+  }
+
+  menu {
+    @apply flex flex-col h-13 lg:h-full w-full lg:w-[15vw] lg:min-w-50 bg-gray-700 p-2 gap-3 rounded-xl
+      overflow-hidden transition-[height] duration-500 shadow-soft;
+
+    /* Collapsed below xl only; the desktop sidebar always shows its sections */
+    details {
+      @apply hidden lg:flex
+        transition-[display] duration-500 ease-in-out transition-discrete;
+    }
+
+    &.is-expanded {
+      @apply top-3 left-3 w-[calc(100vw-(--spacing(6)))] h-[calc(100vh-(--spacing(6)))]
+        lg:static lg:inset-auto lg:h-full lg:w-fit;
+
+      details {
+        @apply flex;
+      }
+    }
+
+    button,
+    summary {
+      @apply flex h-9 w-full items-center place-content-between p-3 rounded-md text-gray-50;
+    }
+  }
+
+  .root-wrapper {
+    @apply flex flex-col lg:flex-row
+      gap-3
+      min-h-full
+      w-full overflow-visible;
+  }
+
+  details {
+    @apply flex flex-col rounded-md p-1;
+
+    nav {
+      @apply flex flex-col gap-1 text-gray-50;
+    }
+
+    &::details-content {
+      @apply h-0 pt-0 opacity-0 overflow-hidden
+        transition-[height,padding,opacity,content-visibility]
+        duration-500 ease-in-out transition-discrete;
+    }
+
+    &[open]::details-content {
+      @apply h-auto pt-3 opacity-100;
+    }
+  }
+
+  summary {
+    @apply flex cursor-pointer;
+  }
+}
+
+@layer components {
+  button,
+  summary {
+    @apply h-9 w-full max-w-80 rounded-lg transition-all duration-500 ease-in-out transition-discrete text-lg;
+
+    &.square {
+      @apply w-9 flex items-center justify-center;
+    }
+  }
+
+  form {
+    @apply flex flex-col gap-3;
+
+    div.form-actions {
+      @apply flex justify-end gap-3 pt-6;
+    }
+  }
+}
+
+@layer effects {
+  .fade-in {
+    @apply opacity-100 starting:opacity-0 transition-opacity duration-500 ease-in-out;
+  }
+}
+
+@layer states {
+  *:disabled {
+    @apply cursor-not-allowed shadow-none;
+  }
+
+  *:required {
+    @apply outline-4 outline-red-500/50;
+  }
+
+  input:invalid {
+    @apply outline-4 outline-red-500/50;
+  }
+
+  input:valid {
+    @apply outline-4 outline-green-500/50;
+  }
+
+  input:user-valid {
+    @apply outline-0;
+  }
+
+  button {
+    @apply not-hover:shadow-soft hover:shadow-raised;
+  }
+}
+
+@layer tones {
+  button {
+    @apply text-gray-700 bg-violet-400;
+
+    &.primary {
+      @apply bg-gray-700 hover:bg-gray-800 text-white;
+    }
+
+    &.secondary {
+      @apply bg-gray-200 hover:bg-gray-300 text-gray-700;
+    }
+
+    &.tertiary {
+      @apply bg-inherit hover:underline text-gray-700 shadow-none;
+    }
+
+    &.nav {
+      @apply bg-inherit hover:bg-gray-800 text-gray-50 shadow-none;
+
+      &.selected {
+        @apply bg-gray-50 hover:bg-gray-200 hover:shadow-raised text-gray-700;
+      }
+    }
+  }
+}
+
+@layer overrides {
+  .mobile-controls {
+    @apply lg:hidden;
+  }
 }

@@ -1,0 +1,8 @@
+{#-def href, nonce_hash, target, submit_text="Submit", reset_text="Reset" -#}
+<form hx-post="{{ href }}" hx-target={{ target }} hx-nonce={{ nonce_hash }} x-data="{ is_valid: $el.checkValidity() }" x-on:input="is_valid = $el.checkValidity()" x-on:change="is_valid = $el.checkValidity()">
+    {{ content }}
+    <div class="form-actions">
+        <button type="reset" class="tertiary" x-on:click="is_valid = $el.checkValidity()">{{ reset_text }}</button>
+        <button type="submit" class="primary" x-bind:disabled="is_valid === false">{{ submit_text }}</button>
+    </div>
+</form>

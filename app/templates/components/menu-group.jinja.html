@@ -1,0 +1,10 @@
+{#def label, group_name="menu" #}
+<details name="{{ group_name }}" {{ attrs.render() }} x-data="{ itemCount: null }" x-init="itemCount = $el.querySelectorAll('nav > button').length">
+    <summary>
+        <span>{{ label }}</span>
+        <span class="fade-in" x-text="itemCount"></span>
+    </summary>
+    <nav>
+        {{ content }}
+    </nav>
+</details>
