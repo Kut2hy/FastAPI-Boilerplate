@@ -11,13 +11,15 @@ from fastapi import (
     Form,
     HTTPException,
     Query,
+    Request,
     status,
 )
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import RedirectResponse, Response
 
 from app.common.dependencies.client import enforce_not_logged_in
 from app.core.redis.dependencies import Redis, get_redis_client
 from app.core.redis.session import delete_session, get_session, update_session
+from app.core.templating.v1.response import HTMXTemplatedResponse, PartialResponseFragment
 from app.i18n.context_translations import gettext
 from app.piccolo.tables.user_account import account_exists
 
@@ -28,6 +30,7 @@ from .._shared_models import (
 )
 from .__constants import (
     REGISTRATION_COOKIE_KWARGS,
+    REGISTRATION_FS_PATH,
     REGISTRATION_FS_PATH_PARTS,
     REGISTRATION_KEY_TTL,
     REGISTRATION_PREFIX,
@@ -49,17 +52,19 @@ router = APIRouter(
 
 @router.get("/")
 async def get_alias(
+    request: Request,
     token: Annotated[str, Query()],
     redis: Annotated[Redis, Depends(get_redis_client())],
 ) -> Response:
     """Handle the alias retrieval for user registration.
 
     Args:
+        request (Request): The incoming HTTP request object.
         token (str): The registration token from the query parameters.
         redis (Redis): The Redis client for retrieving registration information.
 
     Returns:
-        HTMLResponse: An HTML response containing the email associated with the registration token.
+        Response: An HTML response containing the email associated with the registration token.
 
     Raises:
         HTTPException: If the registration token is invalid or has expired.
@@ -101,25 +106,16 @@ async def get_alias(
             detail=gettext("Internal server error."),
         )
 
-    content = f"""
-    <html>
-        <head>
-            <title>Register</title>
-        </head>
-        <body>
-            <h1>Register</h1>
-            <form action="{REGISTRATION_URL}/{CURRENT_ENDPOINT}" method="post">
-                <label for="alias">Alias:</label>
-                <input type="text" id="alias" name="alias" required>
-                <button type="submit">Submit</button>
-            </form>
-        </body>
-    </html>
-    """
-
-    response = HTMLResponse(
+    response = HTMXTemplatedResponse(
+        request=request,
         status_code=status.HTTP_200_OK,
-        content=content,
+        title=gettext("Registration - User Alias"),
+        fragments=(
+            PartialResponseFragment(
+                name="main",
+                path=f"routes/{REGISTRATION_FS_PATH}/{CURRENT_ENDPOINT}.get.jinja.html",
+            ),
+        ),
     )
 
     response.set_cookie(**REGISTRATION_COOKIE_KWARGS, value=new_token, expires=REGISTRATION_KEY_TTL)
@@ -129,6 +125,7 @@ async def get_alias(
 
 @router.post("/")
 async def post_alias(
+    request: Request,
     alias: Annotated[str, Form()],
     redis: Annotated[Redis, Depends(get_redis_client())],
     registration_token: Annotated[str | None, Cookie()] = None,
@@ -136,6 +133,7 @@ async def post_alias(
     """Handle the alias submission for user registration.
 
     Args:
+        request (Request): The FastAPI request object.
         registration_token (str| None): The registration token from the cookies.
         alias (str): The alias to associate with the user account.
         redis (Redis): The Redis client for retrieving registration information.
@@ -193,9 +191,16 @@ async def post_alias(
             detail=gettext("Internal server error."),
         )
 
-    response = RedirectResponse(
-        url=f"{REGISTRATION_URL}/{NEXT_ENDPOINT}",
-        status_code=status.HTTP_303_SEE_OTHER,
+    response = HTMXTemplatedResponse(
+        request=request,
+        status_code=status.HTTP_200_OK,
+        title=gettext("Registration - User Info"),
+        fragments=(
+            PartialResponseFragment(
+                name="main",
+                path=f"routes/{REGISTRATION_FS_PATH}/info.get.jinja.html",
+            ),
+        ),
     )
 
     response.set_cookie(**REGISTRATION_COOKIE_KWARGS, value=new_token, expires=REGISTRATION_KEY_TTL)

@@ -12,14 +12,16 @@ from fastapi import (
     Form,
     HTTPException,
     Query,
+    Request,
     status,
 )
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import RedirectResponse, Response
 
 from app.common.dependencies.client import enforce_not_logged_in
 from app.core.redis.dependencies import Redis, get_redis_client
 from app.core.redis.session import delete_session, get_session, update_session
 from app.core.smtp.mailer import Mailer
+from app.core.templating.v1.response import HTMXTemplatedResponse, PartialResponseFragment
 from app.i18n.context_translations import gettext
 from app.piccolo.tables.user_account import account_exists, change_password
 
@@ -31,6 +33,7 @@ from .._shared_models import (
 )
 from .__constants import (
     FORGOTTEN_PASSW_COOKIE_KWARGS,
+    FORGOTTEN_PASSW_FS_PATH,
     FORGOTTEN_PASSW_FS_PATH_PARTS,
     FORGOTTEN_PASSW_KEY_TTL,
     FORGOTTEN_PASSW_PREFIX,
@@ -55,12 +58,14 @@ router = APIRouter(
 
 @router.get("/")
 async def get_password(
+    request: Request,
     token: Annotated[str, Query()],
     redis: Annotated[Redis, Depends(get_redis_client())],
 ) -> Response:
     """Handle the password reset for forgotten password.
 
     Args:
+        request (Request): The FastAPI request object.
         token (str): The forgotten password token from the query parameters.
         redis (Redis): The Redis client for retrieving forgotten password information.
 
@@ -102,27 +107,16 @@ async def get_password(
             detail=gettext("Internal server error."),
         )
 
-    content = f"""
-        <html>
-            <head>
-                <title>Reset Password</title>
-            </head>
-            <body>
-                <h1>Reset Password</h1>
-                <form action="{FORGOTTEN_PASSW_URL}/{CURRENT_ENDPOINT}" method="post">
-                    <label for="password">Password:</label>
-                    <input type="password" id="password" name="password" required>
-                    <label for="confirm_password">Confirm Password:</label>
-                    <input type="password" id="confirm_password" name="confirm_password" required>
-                    <button type="submit">Submit</button>
-                </form>
-            </body>
-        </html>
-    """
-
-    response = HTMLResponse(
+    response = HTMXTemplatedResponse(
+        request=request,
         status_code=status.HTTP_200_OK,
-        content=content,
+        title=gettext("Forgotten Password - Reset"),
+        fragments=(
+            PartialResponseFragment(
+                name="main",
+                path=f"routes/{FORGOTTEN_PASSW_FS_PATH}/{CURRENT_ENDPOINT}.get.jinja.html",
+            ),
+        ),
     )
 
     response.set_cookie(**FORGOTTEN_PASSW_COOKIE_KWARGS, value=new_token, expires=FORGOTTEN_PASSW_KEY_TTL)
@@ -132,6 +126,7 @@ async def get_password(
 
 @router.post("/")
 async def post_password(
+    request: Request,
     form_data: Annotated[InputPassword, Form()],
     redis: Annotated[Redis, Depends(get_redis_client())],
     background_tasks: BackgroundTasks,
@@ -140,13 +135,14 @@ async def post_password(
     """Handle the password submission for forgotten password.
 
     Args:
+        request (Request): The incoming HTTP request.
         forgotten_passw_token (str): The forgotten password token from the cookies.
         form_data (InputPassword): The user's password and password confirmation from the form data.
         redis (Redis): The Redis client for retrieving forgotten password information.
         background_tasks (BackgroundTasks): FastAPI background tasks for sending emails.
 
     Returns:
-        JSONResponse: A JSON response indicating the success of the password submission.
+        Response: An HTTP response indicating the success of the password submission.
 
     Raises:
         HTTPException: If the forgotten password token is invalid or has expired, or if the passwords do not match.
@@ -178,21 +174,16 @@ async def post_password(
         render_context={},
     )
 
-    content = """
-    <html>
-        <head>
-            <title>Reset Password</title>
-        </head>
-        <body>
-            <h1>Password Reset Successful</h1>
-            <p>Your password has been successfully reset.</p>
-        </body>
-    </html>
-    """
-
-    response = HTMLResponse(
+    response = HTMXTemplatedResponse(
+        request=request,
         status_code=status.HTTP_200_OK,
-        content=content,
+        title=gettext("Forgotten Password - Password Changed"),
+        fragments=(
+            PartialResponseFragment(
+                name="main",
+                path=f"routes/{FORGOTTEN_PASSW_FS_PATH}/{CURRENT_ENDPOINT}.post.jinja.html",
+            ),
+        ),
     )
 
     response.delete_cookie(**FORGOTTEN_PASSW_COOKIE_KWARGS)

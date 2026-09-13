@@ -4,7 +4,10 @@ import logging
 import logging.handlers
 from contextlib import asynccontextmanager
 from logging import getLogger
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+from fastapi.staticfiles import StaticFiles
 
 from app.core.redis.dependencies import IN_STATE_NAME
 from app.core.redis.functions import close_redis_connection_pool, open_redis_connection_pool
@@ -58,6 +61,19 @@ async def life_cycle(app: FastAPI) -> AsyncGenerator[None]:
 
     # Attach the Redis client to the FastAPI app state
     setattr(app.state, IN_STATE_NAME, redis_client)
+
+    # Mount static files for each subdirectory in STATIC_DIR
+    for path in (Path(__file__).parent.parent / "static").iterdir():
+        if path.is_dir():
+            app.mount(
+                path="/" + path.relative_to(Path(__file__).parent.parent).as_posix(),
+                app=StaticFiles(directory=path),
+                name=path.name,
+            )
+            logger.info(
+                "Mounted static files from: %(path)s",
+                {"path": "/" + path.relative_to(Path(__file__).parent.parent).as_posix()},
+            )
 
     # ==========================================================================================
     # Pre startup procedures can be added above this breakpoint.

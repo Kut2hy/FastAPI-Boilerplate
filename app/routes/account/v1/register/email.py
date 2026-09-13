@@ -13,19 +13,22 @@ from fastapi import (
     Request,
     status,
 )
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import Response
 from slowapi.util import get_remote_address
 
 from app.common.dependencies.client import enforce_not_logged_in
+from app.common.middleware.server_timings import capture_duration
 from app.core.redis.dependencies import Redis, get_redis_client
 from app.core.redis.limiter import add_access_attempt
 from app.core.redis.session import create_session
 from app.core.smtp.mailer import Mailer
+from app.core.templating.v1.response import HTMXTemplatedResponse, PartialResponseFragment
 from app.i18n.context_translations import gettext
 
 from .._shared_models import InputEmail  # noqa: TC001 -> For Pydantic, it must not be in TYPE_CHECKING
 from .__constants import (
     REGISTRATION_COOKIE_KWARGS,
+    REGISTRATION_FS_PATH,
     REGISTRATION_FS_PATH_PARTS,
     REGISTRATION_LOCKOUT_TTL,
     REGISTRATION_PREFIX,
@@ -49,36 +52,29 @@ router = APIRouter(
 
 
 @router.get("/")
-async def get_email() -> Response:
+@capture_duration()
+async def get_email(request: Request) -> Response:
     """Render the email submission page for user registration.
 
     Returns:
         HTMLResponse: The HTML response containing the email submission form.
 
     """
-    content = f"""
-    <html>
-        <head>
-            <title>Register</title>
-        </head>
-        <body>
-            <h1>Register</h1>
-            <form action="{REGISTRATION_URL}/{CURRENT_ENDPOINT}" method="post">
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required>
-                <button type="submit">Submit</button>
-            </form>
-        </body>
-    </html>
-    """
-
-    return HTMLResponse(
+    return HTMXTemplatedResponse(
+        request=request,
         status_code=status.HTTP_200_OK,
-        content=content,
+        title=gettext("Registration - Email"),
+        fragments=(
+            PartialResponseFragment(
+                name="main",
+                path=f"routes/{REGISTRATION_FS_PATH}/{CURRENT_ENDPOINT}.get.jinja.html",
+            ),
+        ),
     )
 
 
 @router.post("/")
+@capture_duration()
 async def post_email(
     request: Request,
     form_data: Annotated[InputEmail, Form()],
@@ -137,22 +133,18 @@ async def post_email(
         render_context={"registration_link": f"{scheme}://{hostname}:{port}{REGISTRATION_URL}/alias?token={url_token}"},
     )
 
-    content = """
-    <html>
-        <head>
-            <title>Register</title>
-        </head>
-        <body>
-            <h1>Register</h1>
-            <p>Please check your email for further instructions to complete the registration process.</p>
-        </body>
-    </html>
-    """
-
-    response = HTMLResponse(
+    response = HTMXTemplatedResponse(
+        request=request,
         status_code=status.HTTP_200_OK,
-        content=content,
+        title=gettext("Registration - Email"),
+        fragments=(
+            PartialResponseFragment(
+                name="main",
+                path=f"routes/{REGISTRATION_FS_PATH}/{CURRENT_ENDPOINT}.post.jinja.html",
+            ),
+        ),
     )
 
     response.delete_cookie(**REGISTRATION_COOKIE_KWARGS)
+
     return response

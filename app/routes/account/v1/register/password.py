@@ -10,6 +10,7 @@ from fastapi import (
     Depends,
     Form,
     HTTPException,
+    Request,
     status,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -18,6 +19,7 @@ from app.common.dependencies.client import enforce_not_logged_in
 from app.core.redis.dependencies import Redis, get_redis_client
 from app.core.redis.session import delete_session, get_session
 from app.core.smtp.mailer import Mailer
+from app.core.templating.v1.response import HTMXTemplatedResponse, PartialResponseFragment
 from app.i18n.context_translations import gettext
 from app.piccolo.tables.user_account import account_exists, create_account
 
@@ -28,6 +30,7 @@ from .._shared_models import (
 )
 from .__constants import (
     REGISTRATION_COOKIE_KWARGS,
+    REGISTRATION_FS_PATH,
     REGISTRATION_FS_PATH_PARTS,
     REGISTRATION_PREFIX,
     REGISTRATION_URL,
@@ -51,12 +54,14 @@ router = APIRouter(
 
 @router.get("/")
 async def get_password(
+    request: Request,
     redis: Annotated[Redis, Depends(get_redis_client())],
     registration_token: Annotated[str | None, Cookie()] = None,
 ) -> HTMLResponse:
     """Render the password submission page for user registration.
 
     Args:
+        request (Request): The FastAPI request object.
         registration_token (str): The registration token from the cookies.
         redis (Redis): The Redis client for retrieving registration information.
 
@@ -79,32 +84,21 @@ async def get_password(
             detail=gettext("Invalid or expired registration."),
         )
 
-    content = f"""
-    <html>
-        <head>
-            <title>Register</title>
-        </head>
-        <body>
-            <h1>Register</h1>
-            <form action="{REGISTRATION_URL}/{CURRENT_ENDPOINT}" method="post">
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required>
-                <label for="confirm_password">Confirm Password:</label>
-                <input type="password" id="confirm_password" name="confirm_password" required>
-                <button type="submit">Submit</button>
-            </form>
-        </body>
-    </html>
-    """
-
-    return HTMLResponse(
+    return HTMXTemplatedResponse(
+        request=request,
         status_code=status.HTTP_200_OK,
-        content=content,
+        title=gettext("Registration - Password"),
+        fragments=(
+            PartialResponseFragment(
+                name="main",
+                path=f"routes/{REGISTRATION_FS_PATH}/{CURRENT_ENDPOINT}.get.jinja.html",
+            ),
+        ),
     )
-
 
 @router.post("/")
 async def post_password(
+    request: Request,
     form_data: Annotated[InputPassword, Form()],
     redis: Annotated[Redis, Depends(get_redis_client())],
     background_tasks: BackgroundTasks,
@@ -113,6 +107,7 @@ async def post_password(
     """Handle the password submission for user registration.
 
     Args:
+        request (Request): The FastAPI request object.
         registration_token (str): The registration token from the cookies.
         form_data (InputPassword): The user's password and password confirmation from the form data.
         redis (Redis): The Redis client for retrieving registration information.
@@ -192,22 +187,18 @@ async def post_password(
         render_context={},
     )
 
-    content = """
-    <html>
-        <head>
-            <title>Register</title>
-        </head>
-        <body>
-            <h1>Registration Successful</h1>
-            <p>Your account has been successfully created.</p>
-        </body>
-    </html>
-    """
-
-    response = HTMLResponse(
+    response = HTMXTemplatedResponse(
+        request=request,
         status_code=status.HTTP_200_OK,
-        content=content,
+        title=gettext("Registration - Password"),
+        fragments=(
+            PartialResponseFragment(
+                name="main",
+                path=f"routes/{REGISTRATION_FS_PATH}/{CURRENT_ENDPOINT}_success.jinja.html",
+            ),
+        ),
     )
 
     response.delete_cookie(**REGISTRATION_COOKIE_KWARGS)
+
     return response

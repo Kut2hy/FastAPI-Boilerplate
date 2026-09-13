@@ -12,11 +12,6 @@ from app.core.redis.dependencies import get_redis_client
 
 router = APIRouter(tags=["health"])
 
-@router.get("/")
-async def root() -> JSONResponse:
-    """Root endpoint that verifies the application is running."""
-    return JSONResponse(content={"message": "Welcome to the FastAPI application!"})
-
 
 @router.get("/health/app")
 async def health_check() -> JSONResponse:

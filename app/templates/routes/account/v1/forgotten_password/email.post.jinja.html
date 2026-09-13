@@ -1,0 +1,4 @@
+<Card title={{ _("Forgotten Password") }}>
+    <p>{{ _("Please check your email for further instructions to reset your password.") }}</p>
+    <button type="button" class="primary" hx-get="/" hx-target={{ get_hx_target('main') }} hx-nonce={{ nonce_hash }}>{{ _("Go back home") }}</button>
+</Card>
