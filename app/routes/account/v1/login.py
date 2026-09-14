@@ -3,11 +3,12 @@
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, status
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, BackgroundTasks, Depends, Form, HTTPException, Request, Response, status
+from fastapi.responses import RedirectResponse
 from slowapi.util import get_remote_address
 
 from app.common.dependencies.client import enforce_not_logged_in
+from app.common.middleware.server_timings import capture_duration
 from app.common.pydantic_classes.types.email import (
     Email,  # noqa: TC001 -> For Pydantic, it must not be in TYPE_CHECKING
 )
@@ -20,6 +21,7 @@ from app.core.password import hash_password, verify_password
 from app.core.redis.dependencies import Redis, get_redis_client
 from app.core.redis.limiter import add_access_attempt, reset_access_attempt
 from app.core.smtp.mailer import Mailer
+from app.core.templating.v1.response import HTMXTemplatedResponse, PartialResponseFragment
 from app.i18n.context_translations import gettext
 from app.piccolo.tables.login_attempt import add_login_attempt as add_login_audit_trace
 from app.piccolo.tables.refresh_token import add_refresh_token
@@ -52,6 +54,30 @@ LOGIN_NOTIFICATION_SENDER = Mailer(
 )
 
 
+@router.get("/login")
+@capture_duration()
+async def get_email(request: Request) -> Response:
+    """Render the email submission page for users who have forgotten their password.
+
+    Args:
+        request (Request): The FastAPI request object.
+
+    Returns:
+        HTMLResponse: The HTML response containing the email submission form for forgotten password.
+
+    """
+    return HTMXTemplatedResponse(
+        request=request,
+        status_code=status.HTTP_200_OK,
+        title=gettext("Account Login"),
+        fragments=(
+            PartialResponseFragment(
+                name="main",
+                path="routes/account/v1/login.get.jinja.html",
+            ),
+        ),
+    )
+
 # NOTE: SlowAPI's rate limiting is not used here because it does not provide the flexibility needed to track
 # login attempts by both email and IP address, and to enforce lockout durations based on those attempts.
 @router.post("/login")
@@ -61,7 +87,7 @@ async def login(
     client_ip_addr: Annotated[str, Depends(get_remote_address)],
     redis: Annotated[Redis, Depends(get_redis_client())],
     background_tasks: BackgroundTasks,
-) -> JSONResponse:
+) -> RedirectResponse:
     """Login endpoint for user authentication.
 
     Args:
@@ -72,7 +98,7 @@ async def login(
         background_tasks (BackgroundTasks): FastAPI background tasks for asynchronous operations.
 
     Returns:
-        JSONResponse: A response containing the access and refresh tokens if login is successful.
+        RedirectResponse: A response redirecting to the home page or the referring page if login is successful.
 
     Raises:
         HTTPException:
@@ -180,7 +206,10 @@ async def login(
         redis=redis,
     )
 
-    response = JSONResponse(content={"message": "User logged in successfully."})
+    response = RedirectResponse(
+        url="/",
+        status_code=status.HTTP_303_SEE_OTHER,
+    )
 
     response.set_cookie(
         **ACCESS_TOKEN_COOKIE_KWARGS,

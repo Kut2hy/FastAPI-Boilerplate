@@ -1,0 +1,9 @@
+<Card title={{ _("Account Login") }} description={{ _("Enter your email and password to log in.") }}>
+    <SimpleForm href="/account/v1/login" target="body" nonce_hash={{ nonce_hash }} submit_text={{ _('Log In') }} reset_text={{ _('Reset') }}>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required>
+        <button type="button" class="tertiary place-self-end" hx-get="/account/v1/forgotten-password/email" hx-trigger="click" hx-target={{ get_hx_target('main') }} hx-nonce={{ nonce_hash }}>{{ _('Forgot Password') }}</button>
+    </SimpleForm>
+</Card>

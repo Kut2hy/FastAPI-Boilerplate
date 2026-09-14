@@ -6,7 +6,7 @@ from uuid import UUID
 
 from asyncpg import InterfaceError, PostgresError
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import RedirectResponse
 
 from app.common.dependencies.client import enforce_logged_in
 from app.common.dependencies.cookie_token import get_cookie_token
@@ -29,7 +29,7 @@ async def logout(
     request: Request,
     access_token: Annotated[AccessToken | None, Depends(get_cookie_token(token_type=AccessToken))],
     refresh_token: Annotated[RefreshToken | None, Depends(get_cookie_token(token_type=RefreshToken))],
-) -> JSONResponse:
+) -> RedirectResponse:
     """Logout the user by deleting the refresh token.
 
     Args:
@@ -41,7 +41,7 @@ async def logout(
         HTTPException: (503) If there is a DB issue.
 
     Returns:
-        JSONResponse: A response indicating that the user has been logged out, with cookies deleted.
+        RedirectResponse: A response indicating that the user has been logged out, with cookies deleted.
 
     """
     try:
@@ -91,7 +91,7 @@ async def logout(
             detail=gettext("Logout service is temporarily unavailable. Please try again later."),
         ) from e
 
-    response = JSONResponse(content={"message": "User logged out successfully."})
+    response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
 
     # NOTE: Whole endpoint does not raise a HTTPException -> cookies are destroyed
     # regardless of the outcome of the refresh token deletion.
