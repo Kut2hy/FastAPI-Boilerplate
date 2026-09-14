@@ -1,5 +1,5 @@
 <Card title={{ _("Forgotten Password") }} description={{ _("Enter your email to reset your password.") }}>
-    <SimpleForm href="/account/v1/forgotten-password/email" target={{ get_hx_target('main') }} nonce_hash={{ nonce_hash }}>
+    <SimpleForm href="/account/v1/forgotten-password/email" target={{ get_hx_target('main') }} nonce_hash={{ nonce_hash }} submit_text={{ _('Submit') }} reset_text={{ _('Reset') }}>
         <label for="email">Email:</label>
         <input type="email" id="email" name="email" required>
     </SimpleForm>

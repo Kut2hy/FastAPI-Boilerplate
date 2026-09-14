@@ -1,7 +1,9 @@
 {%- set pages = [
     [_("Home"), "/"],
-    [_("Register"), "/account/v1/register/email/"],
-    [_("Forgot Password"), "/account/v1/forgotten-password/email/"]
+]%}
+{%- set filler_pages = [
+    [_("Filler link 1"), "/"],
+    [_("Filler link 2"), "/"],
 ]%}
 <menu x-data="{ expanded: false }" x-bind:class="{ 'is-expanded': expanded }">
     <div class="top-controls">
@@ -10,16 +12,33 @@
         <div class="logo-container hidden lg:block">
             <img src="/static/img/logo.svg" alt="Logo" class="hidden lg:block fill-white" />
         </div>
+
         <MenuGroup label={{ _('Title') }} open>
             {%- for page in pages %}
                 <MenuItem href={{ page[1] }} hx-nonce={{ nonce_hash }} x-on:click="expanded = false">{{ page[0] }}</MenuItem>
             {%- endfor %}
         </MenuGroup>
+        <MenuGroup label={{ _('Filler') }} open>
+            {%- for page in filler_pages %}
+                <MenuItem href={{ page[1] }} hx-nonce={{ nonce_hash }} x-on:click="expanded = false">{{ page[0] }}</MenuItem>
+            {%- endfor %}
+        </MenuGroup>
+
     </div>
     <div class="bottom-controls">
-        <div class="set-language flex flex-row w-full place-content-center">
-            <button type="button" class="set-language-button square nav" hx-put="/set-language" hx-vals='{"language": "cs"}' hx-trigger="click" hx-target="body" hx-nonce={{ nonce_hash }}>CZ</button>
-            <button type="button" class="set-language-button square nav" hx-put="/set-language" hx-vals='{"language": "en"}' hx-trigger="click" hx-target="body" hx-nonce={{ nonce_hash }}>EN</button>
+        <div class="account w-full px-2 mb-10">
+            <h3 class="text-white text-lg w-full max-w-80 h-9 flex justify-center">{{ _('Account') }}</h3>
+            {%- if user.is_authenticated %}
+                <h3 class="text-white text-lg w-full max-w-80 h-9 flex">{{ user.display_name }}</h3>
+                <button type="button" class="nav center" hx-get="/account/v1/logout" hx-target={{ get_hx_target('main') }} hx-nonce={{ nonce_hash }} x-on:click="expanded = false">{{ _('Logout') }}</button>
+            {%- else %}
+                <button type="button" class="nav center" hx-get="/account/v1/login" hx-target={{ get_hx_target('main') }} hx-nonce={{ nonce_hash }} x-on:click="expanded = false">{{ _('Login') }}</button>
+                <button type="button" class="nav center" hx-get="/account/v1/register/email/" hx-target={{ get_hx_target('main') }} hx-nonce={{ nonce_hash }} x-on:click="expanded = false">{{ _('Register') }}</button>
+            {%- endif %}
+        </div>
+        <div class="set-language flex flex-col w-full">
+            <button type="button" class="nav center" hx-put="/set-language" hx-vals='{"language": "cs"}' hx-trigger="click" hx-target="body" hx-nonce={{ nonce_hash }}>CZ</button>
+            <button type="button" class="nav center" hx-put="/set-language" hx-vals='{"language": "en"}' hx-trigger="click" hx-target="body" hx-nonce={{ nonce_hash }}>EN</button>
         </div>
     </div>
 </menu>

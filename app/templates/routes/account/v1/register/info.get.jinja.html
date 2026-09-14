@@ -1,5 +1,5 @@
 <Card title={{ _("Register") }} description={{ _("Enter your user information.") }}>
-    <SimpleForm href="/account/v1/register/info" target={{ get_hx_target('main') }} nonce_hash={{ nonce_hash }}>
+    <SimpleForm href="/account/v1/register/info" target={{ get_hx_target('main') }} nonce_hash={{ nonce_hash }} submit_text={{ _('Submit') }} reset_text={{ _('Reset') }}>
         <label for="first_name">First Name:</label>
         <input type="text" id="first_name" name="first_name" autocapitalize="words" required>
         <label for="middle_name">Middle Name:</label>

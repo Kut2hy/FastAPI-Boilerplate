@@ -118,7 +118,7 @@
   }
 
   button {
-    @apply h-9 w-full max-w-80;
+    @apply h-9 w-full max-w-80 cursor-pointer;
   }
 
   body {
@@ -168,7 +168,7 @@
   }
 
   details {
-    @apply flex flex-col rounded-md p-1;
+    @apply flex flex-col rounded-xl p-1;
 
     nav {
       @apply flex flex-col gap-1 text-gray-50;
@@ -217,7 +217,7 @@
 
 @layer states {
   *:disabled {
-    @apply cursor-not-allowed shadow-none;
+    @apply cursor-not-allowed shadow-none opacity-40;
   }
 
   *:required {
@@ -263,6 +263,14 @@
       &.selected {
         @apply bg-gray-50 hover:bg-gray-200 hover:shadow-raised text-gray-700;
       }
+    }
+
+    &.center {
+      @apply flex items-center justify-center;
+    }
+
+    &.offset {
+      @apply ml-3;
     }
   }
 }
